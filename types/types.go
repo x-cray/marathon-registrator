@@ -24,16 +24,4 @@ type Service struct {
 	Tags  []string
 	Attrs map[string]string
 	TTL   int
-
-	Origin ServicePort
-}
-
-type ServicePort struct {
-	HostPort          string
-	HostIP            string
-	ExposedPort       string
-	ExposedIP         string
-	PortType          string
-	ContainerHostname string
-	ContainerID       string
 }

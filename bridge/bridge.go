@@ -2,7 +2,6 @@ package bridge
 
 import (
 	"log"
-	"net"
 	"sync"
 
 	"github.com/x-cray/marathon-service-registrator/consul"
@@ -47,30 +46,22 @@ func (b *Bridge) Sync() error {
 	b.Lock()
 	defer b.Unlock()
 
-	marathonApplications, err := b.marathon.Applications()
+	marathonServices, err := b.marathon.Services()
 	if err != nil {
 		return err
 	}
 
-	consulServices, err := b.registry.Services()
+	log.Printf("Received %d services from Marathon", len(marathonServices))
+
+	registryServices, err := b.registry.Services()
 	if err != nil {
 		return err
 	}
 
-	for _, app := range marathonApplications.Apps {
-		log.Printf("App %v\n", app.ID)
-		for _, task := range app.Tasks {
-			taskIP, err := net.ResolveIPAddr("ip", task.Host)
-			if err != nil {
-				return err
-			}
-			log.Printf("- task at %s, ports: %v\n", taskIP, task.Ports)
-		}
-	}
+	log.Printf("Received %d services from registry", len(registryServices))
 
-	for _, service := range consulServices {
-		log.Printf("Service %s: %s: port %d\n", service.ID, service.IP, service.Port)
-	}
+//	tasksMap := make(map[string]*types.Service)
+//	servicesMap := make(map[string]*types.Service)
 
 	return nil
 }

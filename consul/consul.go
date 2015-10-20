@@ -3,7 +3,6 @@ package consul
 import (
 	"log"
 	"net/url"
-	"strings"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
@@ -11,12 +10,6 @@ import (
 )
 
 const DefaultInterval = "10s"
-
-func (r *ConsulAdapter) interpolateService(script string, service *types.Service) string {
-	withIp := strings.Replace(script, "$SERVICE_IP", service.Origin.HostIP, -1)
-	withPort := strings.Replace(withIp, "$SERVICE_PORT", service.Origin.HostPort, -1)
-	return withPort
-}
 
 func New(uri *url.URL, dryRun bool) (*ConsulAdapter, error) {
 	config := consulapi.DefaultConfig()
@@ -94,6 +87,9 @@ func (r *ConsulAdapter) Services() ([]*types.Service, error) {
 		}
 		out[i] = s
 		i++
+
+		log.Printf("Service %s: %s: port %d", v.Service, v.Address, v.Port)
 	}
+
 	return out, nil
 }
