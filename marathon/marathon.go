@@ -1,13 +1,13 @@
 package marathon
 
 import (
-	"log"
 	"os"
 	"net"
 	"net/url"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
+	log "github.com/Sirupsen/logrus"
 	marathon "github.com/gambol99/go-marathon"
 )
 
@@ -21,7 +21,7 @@ func New(marathonUri string) (*MarathonAdapter, error) {
 	config.URL = marathonUri
 	config.LogOutput = os.Stdout
 
-	log.Printf("Connecting to Marathon at %v\n", marathonUri)
+	log.Infof("marathon: Connecting to Marathon at %v", marathonUri)
 	client, err := marathon.NewClient(config)
 	if err != nil {
 		return nil, err
@@ -42,15 +42,24 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 		return nil, err
 	}
 
-	result := make([]*types.Service, len(applications.Apps))
+	result := make([]*types.Service, 0)
 	for _, app := range applications.Apps {
-		log.Printf("App %v", app.ID)
+		log.WithFields(log.Fields{
+			"id": app.ID,
+		}).Debug("marathon: app")
 		for _, task := range app.Tasks {
 			taskIP, err := net.ResolveIPAddr("ip", task.Host)
 			if err != nil {
 				return nil, err
 			}
-			log.Printf("- task %s at %s, ports: %v", task.ID, task.Host, task.Ports)
+
+			log.WithFields(log.Fields{
+				"id": task.ID,
+				"host": task.Host,
+				"ip": taskIP,
+				"ports": task.Ports,
+			}).Debug("marathon: task")
+
 			for port := range task.Ports {
 				result = append(result, &types.Service{
 					ID: task.ID,

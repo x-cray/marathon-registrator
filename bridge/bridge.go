@@ -1,12 +1,14 @@
 package bridge
 
 import (
-	"log"
 	"sync"
 
 	"github.com/x-cray/marathon-service-registrator/consul"
 	"github.com/x-cray/marathon-service-registrator/marathon"
 	"github.com/x-cray/marathon-service-registrator/types"
+
+	log "github.com/Sirupsen/logrus"
+	"fmt"
 )
 
 type Bridge struct {
@@ -51,17 +53,30 @@ func (b *Bridge) Sync() error {
 		return err
 	}
 
-	log.Printf("Received %d services from Marathon", len(marathonServices))
+	log.Infof("Received %d services from Marathon", len(marathonServices))
+
+	marathonServicesMap := make(map[string]map[int]*types.Service)
+	for _, service := range marathonServices {
+		entry, ok := marathonServicesMap[service.IP]
+		if !ok {
+			entry = make(map[int]*types.Service)
+			marathonServicesMap[service.IP] = entry
+		}
+
+		entry[service.Port] = service
+	}
 
 	registryServices, err := b.registry.Services()
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Received %d services from registry", len(registryServices))
+	log.Infof("Received %d services from registry", len(registryServices))
 
-//	tasksMap := make(map[string]*types.Service)
-//	servicesMap := make(map[string]*types.Service)
+	registryServicesMap := make(map[string]*types.Service)
+	for _, service := range registryServices {
+		registryServicesMap[fmt.Sprintf("%s:%d", service.IP, service.Port)] = service
+	}
 
 	return nil
 }

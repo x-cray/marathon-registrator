@@ -1,11 +1,11 @@
 package consul
 
 import (
-	"log"
 	"net/url"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
+	log "github.com/Sirupsen/logrus"
 	consulapi "github.com/hashicorp/consul/api"
 )
 
@@ -16,7 +16,7 @@ func New(uri *url.URL, dryRun bool) (*ConsulAdapter, error) {
 	config.Address = uri.Host
 	config.Scheme = uri.Scheme
 
-	log.Printf("Connecting to Consul at %+v\n", uri)
+	log.Infof("consul: Connecting to Consul at %v", uri)
 	client, err := consulapi.NewClient(config)
 	if err != nil {
 		return nil, err
@@ -40,14 +40,14 @@ func (r *ConsulAdapter) Ping() error {
 	if err != nil {
 		return err
 	}
-	log.Println("consul: current leader ", leader)
+	log.Debugf("consul: Current leader ", leader)
 
 	return nil
 }
 
 func (r *ConsulAdapter) Register(service *types.Service) error {
 	if r.dryRun {
-		log.Printf("Would register service %s at %s:%d", service.Name, service.IP, service.Port)
+		log.Infof("consul: dry-run: Would register service %s at %s:%d", service.Name, service.IP, service.Port)
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func (r *ConsulAdapter) Register(service *types.Service) error {
 
 func (r *ConsulAdapter) Deregister(service *types.Service) error {
 	if r.dryRun {
-		log.Printf("Would deregister service %s", service.ID)
+		log.Infof("consul: dry-run: Would deregister service %s", service.ID)
 		return nil
 	}
 
@@ -88,7 +88,11 @@ func (r *ConsulAdapter) Services() ([]*types.Service, error) {
 		out[i] = s
 		i++
 
-		log.Printf("Service %s: %s: port %d", v.Service, v.Address, v.Port)
+		log.WithFields(log.Fields{
+			"name": v.Service,
+			"ip": v.Address,
+			"port": v.Port,
+		}).Debugf("consul: service")
 	}
 
 	return out, nil
