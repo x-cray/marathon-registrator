@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"net/url"
 	"time"
 
@@ -24,4 +25,8 @@ type Service struct {
 	Tags  []string
 	Attrs map[string]string
 	TTL   int
+}
+
+func (s *Service) MapKey() string {
+	return fmt.Sprintf("%s:%d", s.IP, s.Port)
 }

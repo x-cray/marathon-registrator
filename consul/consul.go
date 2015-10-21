@@ -47,7 +47,11 @@ func (r *ConsulAdapter) Ping() error {
 
 func (r *ConsulAdapter) Register(service *types.Service) error {
 	if r.dryRun {
-		log.Infof("consul: dry-run: Would register service %s at %s:%d", service.Name, service.IP, service.Port)
+		log.WithFields(log.Fields{
+			"name": service.Name,
+			"ip": service.IP,
+			"port": service.Port,
+		}).Info("consul: dry-run: Would register service")
 		return nil
 	}
 
@@ -63,7 +67,11 @@ func (r *ConsulAdapter) Register(service *types.Service) error {
 
 func (r *ConsulAdapter) Deregister(service *types.Service) error {
 	if r.dryRun {
-		log.Infof("consul: dry-run: Would deregister service %s", service.ID)
+		log.WithFields(log.Fields{
+			"name": service.Name,
+			"ip": service.IP,
+			"port": service.Port,
+		}).Info("consul: dry-run: Would deregister service")
 		return nil
 	}
 

@@ -54,7 +54,6 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 			}
 
 			log.WithFields(log.Fields{
-				"id": task.ID,
 				"host": task.Host,
 				"ip": taskIP,
 				"ports": task.Ports,
