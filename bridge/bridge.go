@@ -47,12 +47,20 @@ func (b *Bridge) Sync() error {
 	b.Lock()
 	defer b.Unlock()
 
+	actionsPerformed := false
+
 	// Get services from registry and build ip:port-indexed service map.
 	registryServices, err := b.registry.Services()
 	if err != nil {
 		return err
 	}
 
+	advertizeAddr, err := b.registry.AdvertiseAddr()
+	if err != nil {
+		return err
+	}
+
+	log.WithField("prefix", "bridge").Infof("Registry advertize address is %s", advertizeAddr)
 	log.WithField("prefix", "bridge").Infof("Received %d services from registry", len(registryServices))
 
 	registryServicesMap := make(map[string]*types.Service)
@@ -60,37 +68,52 @@ func (b *Bridge) Sync() error {
 		registryServicesMap[service.MapKey()] = service
 	}
 
-	// Get services from Marathon and build ip-indexed service map.
-	// Determine not yet registered services (existing in Marathon and absent in registry).
+	// Get services from Marathon.
 	marathonServices, err := b.marathon.Services()
 	if err != nil {
 		return err
 	}
 
-	log.WithField("prefix", "bridge").Infof("Received %d services from Marathon", len(marathonServices))
-
-	marathonServicesMap := make(map[string]map[int]*types.Service)
+	// Build service map of services running on registry advertized host.
+	marathonServicesMap := make(map[string]*types.Service)
 	for _, service := range marathonServices {
-		entry, ok := marathonServicesMap[service.IP]
-		if !ok {
-			entry = make(map[int]*types.Service)
-			marathonServicesMap[service.IP] = entry
+		if service.IP == advertizeAddr {
+			marathonServicesMap[service.MapKey()] = service
 		}
+	}
 
-		entry[service.Port] = service
+	log.WithField("prefix", "bridge").Infof(
+		"Received %d services from Marathon, %d are running on registry advertized address",
+		len(marathonServices),
+		len(marathonServicesMap),
+	)
 
+	// Register Marathon services absent in registry.
+	for _, marathonService := range marathonServicesMap {
 		// If service is not yet registered we need to register it.
-		if registryServicesMap[service.MapKey()] == nil {
-			b.registry.Register(service)
+		if registryServicesMap[marathonService.MapKey()] == nil {
+			err := b.registry.Register(marathonService)
+			if err != nil {
+				return err
+			}
+			actionsPerformed = true
 		}
 	}
 
 	// Deregister dangling services (existing in registry and absent in Marathon).
-	for _, registryService := range registryServices {
+	for _, registryService := range registryServicesMap {
 		// If service is registered and we don't have it in Marathon we need to deregister it.
-		if marathonServicesMap[registryService.IP] == nil || marathonServicesMap[registryService.IP][registryService.Port] == nil {
-			b.registry.Deregister(registryService)
+		if marathonServicesMap[registryService.MapKey()] == nil {
+			err := b.registry.Deregister(registryService)
+			if err != nil {
+				return err
+			}
+			actionsPerformed = true
 		}
+	}
+
+	if !actionsPerformed {
+		log.WithField("prefix", "bridge").Info("All services are in sync, no actions performed")
 	}
 
 	return nil

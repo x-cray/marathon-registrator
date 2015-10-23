@@ -4,6 +4,7 @@ import (
 	"os"
 	"net"
 	"net/url"
+	"strings"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
@@ -34,6 +35,23 @@ func (m *MarathonAdapter) ListenForEvents() {
 
 }
 
+func serviceFromTask(task *marathon.Task, port int, app *marathon.Application) (*types.Service, error) {
+	taskIP, err := net.ResolveIPAddr("ip", task.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	idTokens := strings.Split(app.ID, "/")
+	name := idTokens[len(idTokens) - 1]
+
+	return &types.Service{
+		ID: task.ID,
+		Name: name,
+		IP: taskIP.String(),
+		Port: port,
+	}, nil
+}
+
 func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 	params := make(url.Values)
 	params.Add("embed", "apps.tasks")
@@ -44,30 +62,20 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 
 	result := make([]*types.Service, 0)
 	for _, app := range applications.Apps {
-		log.WithFields(log.Fields{
-			"prefix": "marathon",
-			"id": app.ID,
-		}).Debug("App")
 		for _, task := range app.Tasks {
-			taskIP, err := net.ResolveIPAddr("ip", task.Host)
-			if err != nil {
-				return nil, err
-			}
+			for _, port := range task.Ports {
+				service, err := serviceFromTask(task, port, &app)
+				if err != nil {
+					return nil, err
+				}
 
-			log.WithFields(log.Fields{
-				"prefix": "marathon",
-				"host": task.Host,
-				"ip": taskIP,
-				"ports": task.Ports,
-			}).Debug("Task")
-
-			for port := range task.Ports {
-				result = append(result, &types.Service{
-					ID: task.ID,
-					Name: app.ID,
-					IP: taskIP.String(),
-					Port: port,
-				})
+				log.WithFields(log.Fields{
+					"prefix": "marathon",
+					"name": service.Name,
+					"ip": service.IP,
+					"port": service.Port,
+				}).Debugf("Service")
+				result = append(result, service)
 			}
 		}
 	}

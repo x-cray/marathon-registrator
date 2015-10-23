@@ -5,6 +5,7 @@ import (
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
+	"errors"
 	log "github.com/Sirupsen/logrus"
 	consulapi "github.com/hashicorp/consul/api"
 )
@@ -49,9 +50,9 @@ func (r *ConsulAdapter) Register(service *types.Service) error {
 	if r.dryRun {
 		log.WithFields(log.Fields{
 			"prefix": "consul: dry-run",
-			"name": service.Name,
-			"ip": service.IP,
-			"port": service.Port,
+			"name":   service.Name,
+			"ip":     service.IP,
+			"port":   service.Port,
 		}).Info("Would register service")
 		return nil
 	}
@@ -70,14 +71,31 @@ func (r *ConsulAdapter) Deregister(service *types.Service) error {
 	if r.dryRun {
 		log.WithFields(log.Fields{
 			"prefix": "consul: dry-run",
-			"name": service.Name,
-			"ip": service.IP,
-			"port": service.Port,
+			"name":   service.Name,
+			"ip":     service.IP,
+			"port":   service.Port,
 		}).Info("Would deregister service")
 		return nil
 	}
 
 	return r.client.Agent().ServiceDeregister(service.ID)
+}
+
+func (r *ConsulAdapter) AdvertiseAddr() (string, error) {
+	info, err := r.client.Agent().Self()
+	if err != nil {
+		return "", err
+	}
+
+	config := info["Config"]
+	if config != nil {
+		addr, ok := config["AdvertiseAddr"].(string)
+		if ok {
+			return addr, nil
+		}
+	}
+
+	return "", errors.New("Advertized address was not found")
 }
 
 func (r *ConsulAdapter) Services() ([]*types.Service, error) {
@@ -100,10 +118,10 @@ func (r *ConsulAdapter) Services() ([]*types.Service, error) {
 
 		log.WithFields(log.Fields{
 			"prefix": "consul",
-			"name": v.Service,
-			"ip": v.Address,
-			"port": v.Port,
-		}).Debugf("service")
+			"name":   v.Service,
+			"ip":     v.Address,
+			"port":   v.Port,
+		}).Debugf("Service")
 	}
 
 	return out, nil
