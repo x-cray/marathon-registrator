@@ -2,10 +2,10 @@ package consul
 
 import (
 	"net/url"
+	"errors"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
-	"errors"
 	log "github.com/Sirupsen/logrus"
 	consulapi "github.com/hashicorp/consul/api"
 )

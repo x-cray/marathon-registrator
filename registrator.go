@@ -12,7 +12,6 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	logrusSyslog "github.com/Sirupsen/logrus/hooks/syslog"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"time"
 )
 
 var (
@@ -73,9 +72,7 @@ func getConfig() (*types.Config, error) {
 	if level, err := log.ParseLevel(*logLevel); err != nil {
 		return nil, err
 	} else {
-		log.SetFormatter(&prefixed.TextFormatter{
-			TimestampFormat: time.StampMilli,
-		})
+		log.SetFormatter(new(prefixed.TextFormatter))
 		log.SetLevel(level)
 	}
 

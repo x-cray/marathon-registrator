@@ -49,12 +49,13 @@ func (b *Bridge) Sync() error {
 
 	actionsPerformed := false
 
-	// Get services from registry and build ip:port-indexed service map.
+	// Get services from registry.
 	registryServices, err := b.registry.Services()
 	if err != nil {
 		return err
 	}
 
+	// Get registry's advertize address.
 	advertizeAddr, err := b.registry.AdvertiseAddr()
 	if err != nil {
 		return err
@@ -63,6 +64,7 @@ func (b *Bridge) Sync() error {
 	log.WithField("prefix", "bridge").Infof("Registry advertize address is %s", advertizeAddr)
 	log.WithField("prefix", "bridge").Infof("Received %d services from registry", len(registryServices))
 
+	// Build ip:port-indexed service map.
 	registryServicesMap := make(map[string]*types.Service)
 	for _, service := range registryServices {
 		registryServicesMap[service.MapKey()] = service
