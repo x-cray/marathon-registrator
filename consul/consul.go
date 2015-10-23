@@ -16,7 +16,7 @@ func New(uri *url.URL, dryRun bool) (*ConsulAdapter, error) {
 	config.Address = uri.Host
 	config.Scheme = uri.Scheme
 
-	log.Infof("consul: Connecting to Consul at %v", uri)
+	log.WithField("prefix", "consul").Infof("Connecting to Consul at %v", uri)
 	client, err := consulapi.NewClient(config)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (r *ConsulAdapter) Ping() error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("consul: Current leader ", leader)
+	log.WithField("prefix", "consul").Debugf("Current leader %s", leader)
 
 	return nil
 }
@@ -48,10 +48,11 @@ func (r *ConsulAdapter) Ping() error {
 func (r *ConsulAdapter) Register(service *types.Service) error {
 	if r.dryRun {
 		log.WithFields(log.Fields{
+			"prefix": "consul: dry-run",
 			"name": service.Name,
 			"ip": service.IP,
 			"port": service.Port,
-		}).Info("consul: dry-run: Would register service")
+		}).Info("Would register service")
 		return nil
 	}
 
@@ -68,10 +69,11 @@ func (r *ConsulAdapter) Register(service *types.Service) error {
 func (r *ConsulAdapter) Deregister(service *types.Service) error {
 	if r.dryRun {
 		log.WithFields(log.Fields{
+			"prefix": "consul: dry-run",
 			"name": service.Name,
 			"ip": service.IP,
 			"port": service.Port,
-		}).Info("consul: dry-run: Would deregister service")
+		}).Info("Would deregister service")
 		return nil
 	}
 
@@ -97,10 +99,11 @@ func (r *ConsulAdapter) Services() ([]*types.Service, error) {
 		i++
 
 		log.WithFields(log.Fields{
+			"prefix": "consul",
 			"name": v.Service,
 			"ip": v.Address,
 			"port": v.Port,
-		}).Debugf("consul: service")
+		}).Debugf("service")
 	}
 
 	return out, nil

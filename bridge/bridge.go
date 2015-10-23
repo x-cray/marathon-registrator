@@ -53,7 +53,7 @@ func (b *Bridge) Sync() error {
 		return err
 	}
 
-	log.Infof("Received %d services from registry", len(registryServices))
+	log.WithField("prefix", "bridge").Infof("Received %d services from registry", len(registryServices))
 
 	registryServicesMap := make(map[string]*types.Service)
 	for _, service := range registryServices {
@@ -67,7 +67,7 @@ func (b *Bridge) Sync() error {
 		return err
 	}
 
-	log.Infof("Received %d services from Marathon", len(marathonServices))
+	log.WithField("prefix", "bridge").Infof("Received %d services from Marathon", len(marathonServices))
 
 	marathonServicesMap := make(map[string]map[int]*types.Service)
 	for _, service := range marathonServices {

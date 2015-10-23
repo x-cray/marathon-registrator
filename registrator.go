@@ -9,6 +9,7 @@ import (
 	"github.com/x-cray/marathon-service-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	logrusSyslog "github.com/Sirupsen/logrus/hooks/syslog"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -71,9 +72,7 @@ func getConfig() (*types.Config, error) {
 	if level, err := log.ParseLevel(*logLevel); err != nil {
 		return nil, err
 	} else {
-		log.SetFormatter(&log.TextFormatter{
-			FullTimestamp: true,
-		})
+		log.SetFormatter(new(prefixed.TextFormatter))
 		log.SetLevel(level)
 	}
 

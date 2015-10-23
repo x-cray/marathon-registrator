@@ -21,7 +21,7 @@ func New(marathonUri string) (*MarathonAdapter, error) {
 	config.URL = marathonUri
 	config.LogOutput = os.Stdout
 
-	log.Infof("marathon: Connecting to Marathon at %v", marathonUri)
+	log.WithField("prefix", "marathon").Infof("Connecting to Marathon at %v", marathonUri)
 	client, err := marathon.NewClient(config)
 	if err != nil {
 		return nil, err
@@ -45,8 +45,9 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 	result := make([]*types.Service, 0)
 	for _, app := range applications.Apps {
 		log.WithFields(log.Fields{
+			"prefix": "marathon",
 			"id": app.ID,
-		}).Debug("marathon: app")
+		}).Debug("App")
 		for _, task := range app.Tasks {
 			taskIP, err := net.ResolveIPAddr("ip", task.Host)
 			if err != nil {
@@ -54,10 +55,11 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 			}
 
 			log.WithFields(log.Fields{
+				"prefix": "marathon",
 				"host": task.Host,
 				"ip": taskIP,
 				"ports": task.Ports,
-			}).Debug("marathon: task")
+			}).Debug("Task")
 
 			for port := range task.Ports {
 				result = append(result, &types.Service{
