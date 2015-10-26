@@ -1,8 +1,8 @@
 package consul
 
 import (
-	"net/url"
 	"errors"
+	"net/url"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 

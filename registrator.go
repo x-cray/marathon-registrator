@@ -9,8 +9,8 @@ import (
 	"github.com/x-cray/marathon-service-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
-	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	logrusSyslog "github.com/Sirupsen/logrus/hooks/syslog"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

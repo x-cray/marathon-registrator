@@ -1,9 +1,9 @@
 package marathon
 
 import (
-	"os"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/x-cray/marathon-service-registrator/types"
@@ -42,12 +42,12 @@ func serviceFromTask(task *marathon.Task, port int, app *marathon.Application) (
 	}
 
 	idTokens := strings.Split(app.ID, "/")
-	name := idTokens[len(idTokens) - 1]
+	name := idTokens[len(idTokens)-1]
 
 	return &types.Service{
-		ID: task.ID,
+		ID:   task.ID,
 		Name: name,
-		IP: taskIP.String(),
+		IP:   taskIP.String(),
 		Port: port,
 	}, nil
 }
@@ -71,9 +71,9 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 
 				log.WithFields(log.Fields{
 					"prefix": "marathon",
-					"name": service.Name,
-					"ip": service.IP,
-					"port": service.Port,
+					"name":   service.Name,
+					"ip":     service.IP,
+					"port":   service.Port,
 				}).Debugf("Service")
 				result = append(result, service)
 			}
