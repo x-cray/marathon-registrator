@@ -13,10 +13,9 @@ import (
 type Bridge struct {
 	sync.Mutex
 
-	marathon *marathon.MarathonAdapter
-	registry *consul.ConsulAdapter
-	services map[string][]*types.Service
-	config   *types.Config
+	scheduler types.SchedulerAdapter
+	registry  types.RegistryAdapter
+	config    *types.Config
 }
 
 func New(c *types.Config) (*Bridge, error) {
@@ -31,15 +30,14 @@ func New(c *types.Config) (*Bridge, error) {
 	}
 
 	return &Bridge{
-		config:   c,
-		marathon: marathon,
-		registry: consul,
-		services: make(map[string][]*types.Service),
+		config:    c,
+		scheduler: marathon,
+		registry:  consul,
 	}, nil
 }
 
 func (b *Bridge) ListenForEvents() {
-	b.marathon.ListenForEvents()
+	b.scheduler.ListenForEvents()
 }
 
 // Perform full synchronization of Marathon tasks to service registry.
@@ -71,7 +69,7 @@ func (b *Bridge) Sync() error {
 	}
 
 	// Get services from Marathon.
-	marathonServices, err := b.marathon.Services()
+	marathonServices, err := b.scheduler.Services()
 	if err != nil {
 		return err
 	}

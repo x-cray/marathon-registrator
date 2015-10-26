@@ -8,6 +8,19 @@ import (
 	"github.com/hashicorp/consul-template/logging"
 )
 
+type SchedulerAdapter interface {
+	Services() ([]*Service, error)
+	ListenForEvents()
+}
+
+type RegistryAdapter interface {
+	Services() ([]*Service, error)
+	Ping() error
+	Register(service *Service) error
+	Deregister(service *Service) error
+	AdvertiseAddr() (string, error)
+}
+
 type Config struct {
 	Marathon       string
 	Consul         *url.URL
