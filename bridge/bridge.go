@@ -36,13 +36,21 @@ func New(c *types.Config) (*Bridge, error) {
 	}, nil
 }
 
-func (b *Bridge) ListenForEvents() error {
-	_, err := b.scheduler.ListenForEvents()
+func (b *Bridge) ProcessSchedulerEvents() error {
+	eventsChannel, err := b.scheduler.ListenForEvents()
 	if err != nil {
 		return err
 	}
 
-	log.WithField("prefix", "bridge").Infof("Registered for Marathon event stream")
+	log.WithField("prefix", "bridge").Info("Registered for scheduler event stream")
+	for {
+		event := <- eventsChannel
+		log.WithFields(log.Fields{
+			"prefix": "bridge",
+			"event": event,
+		}).Debug("Received scheduler event")
+	}
+
 	return nil
 }
 

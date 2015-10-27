@@ -36,7 +36,10 @@ func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
 	result := make(types.EventsChannel, 5)
 	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS); err != nil {
 		return nil, err
-	} else {
+	}
+
+	// Convert Marathon events to abstract events and write to output channel.
+	go func() {
 		for {
 			event := <-update
 			result <- &types.Event{
@@ -45,7 +48,7 @@ func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
 				Event: event.Event,
 			}
 		}
-	}
+	}()
 
 	return result, nil
 }

@@ -52,7 +52,8 @@ func main() {
 		log.Errorf("Failed to sync services: %v", syncErr)
 	}
 
-	b.ListenForEvents()
+	err = b.ProcessSchedulerEvents()
+	assert(err)
 }
 
 func getConfig() (*types.Config, error) {
