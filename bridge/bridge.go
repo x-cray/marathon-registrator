@@ -36,8 +36,14 @@ func New(c *types.Config) (*Bridge, error) {
 	}, nil
 }
 
-func (b *Bridge) ListenForEvents() {
-	b.scheduler.ListenForEvents()
+func (b *Bridge) ListenForEvents() error {
+	_, err := b.scheduler.ListenForEvents()
+	if err != nil {
+		return err
+	}
+
+	log.WithField("prefix", "bridge").Infof("Registered for Marathon event stream")
+	return nil
 }
 
 // Perform full synchronization of Marathon tasks to service registry.

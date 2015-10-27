@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"net/url"
 	"time"
-
-	"github.com/hashicorp/consul-template/logging"
 )
 
 type SchedulerAdapter interface {
 	Services() ([]*Service, error)
-	ListenForEvents()
+	ListenForEvents() (EventsChannel, error)
 }
 
 type RegistryAdapter interface {
@@ -21,13 +19,25 @@ type RegistryAdapter interface {
 	AdvertiseAddr() (string, error)
 }
 
+// Event is the definition for a event in scheduler.
+type Event struct {
+	ID    int
+	Name  string
+	Event interface{}
+}
+
+func (event *Event) String() string {
+	return fmt.Sprintf("type: %s, event: %s", event.Name, event.Event)
+}
+
+// EventsChannel is a channel to receive events upon.
+type EventsChannel chan *Event
+
 type Config struct {
 	Marathon       string
 	Consul         *url.URL
 	DryRun         bool
 	ResyncInterval time.Duration
-	LogLevel       string
-	Syslog         *logging.Config
 }
 
 type Service struct {

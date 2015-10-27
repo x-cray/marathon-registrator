@@ -12,3 +12,4 @@ test:
 format:
 	@echo "--> Running go fmt"
 	@go fmt $(PACKAGES)
+

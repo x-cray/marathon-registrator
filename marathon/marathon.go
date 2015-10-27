@@ -31,8 +31,23 @@ func New(marathonUri string) (*MarathonAdapter, error) {
 	return &MarathonAdapter{client: client}, nil
 }
 
-func (m *MarathonAdapter) ListenForEvents() {
+func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
+	update := make(marathon.EventsChannel, 5)
+	result := make(types.EventsChannel, 5)
+	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS); err != nil {
+		return nil, err
+	} else {
+		for {
+			event := <-update
+			result <- &types.Event{
+				ID:    event.ID,
+				Name:  event.Name,
+				Event: event.Event,
+			}
+		}
+	}
 
+	return result, nil
 }
 
 func serviceFromTask(task *marathon.Task, port int, app *marathon.Application) (*types.Service, error) {
