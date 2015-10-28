@@ -47,7 +47,7 @@ func (b *Bridge) ProcessSchedulerEvents() error {
 		event := <- eventsChannel
 		log.WithFields(log.Fields{
 			"prefix": "bridge",
-			"event": event,
+			"event": event.Event,
 		}).Debug("Received scheduler event")
 	}
 

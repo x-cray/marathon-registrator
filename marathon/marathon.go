@@ -3,24 +3,22 @@ package marathon
 import (
 	"net"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
-	marathon "github.com/gambol99/go-marathon"
+	marathon "github.com/x-cray/go-marathon"
 )
 
 type MarathonAdapter struct {
 	client marathon.Marathon
-	events chan string
 }
 
 func New(marathonUri string) (*MarathonAdapter, error) {
 	config := marathon.NewDefaultConfig()
 	config.URL = marathonUri
-	config.LogOutput = os.Stdout
+	config.EventsTransport = marathon.EVENTS_TRANSPORT_SSE
 
 	log.WithField("prefix", "marathon").Infof("Connecting to Marathon at %v", marathonUri)
 	client, err := marathon.NewClient(config)
@@ -34,7 +32,7 @@ func New(marathonUri string) (*MarathonAdapter, error) {
 func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
 	update := make(marathon.EventsChannel, 5)
 	result := make(types.EventsChannel, 5)
-	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS); err != nil {
+	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS | marathon.EVENTS_SUBSCRIPTIONS); err != nil {
 		return nil, err
 	}
 
@@ -42,6 +40,10 @@ func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
 	go func() {
 		for {
 			event := <-update
+			log.WithFields(log.Fields{
+				"prefix": "marathon",
+				"event": event.Event,
+			}).Debug("Received scheduler event")
 			result <- &types.Event{
 				ID:    event.ID,
 				Name:  event.Name,
