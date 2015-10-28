@@ -40,10 +40,6 @@ func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
 	go func() {
 		for {
 			event := <-update
-			log.WithFields(log.Fields{
-				"prefix": "marathon",
-				"event": event.Event,
-			}).Debug("Received scheduler event")
 			result <- &types.Event{
 				ID:    event.ID,
 				Name:  event.Name,
