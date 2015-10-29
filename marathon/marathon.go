@@ -46,7 +46,7 @@ func (m *MarathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	return nil
 }
 
-func toServiceEvent(marathonEvent *marathon.Event) *types.Event {
+func toServiceEvent(marathonEvent *marathon.Event) *types.ServiceEvent {
 	return &types.ServiceEvent{
 
 		OriginalEvent: marathonEvent.Event,

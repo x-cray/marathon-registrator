@@ -45,13 +45,13 @@ const (
 	ServiceWentDown
 )
 
-const serviceActionMap = map[ServiceAction]string{
-	ServiceWentUp:   "went up",
-	ServiceWentDown: "went down",
+var serviceActionMap = map[int]string{
+	int(ServiceWentUp):   "went up",
+	int(ServiceWentDown): "went down",
 }
 
 func (a ServiceAction) String() string {
-	return serviceActionMap[a]
+	return serviceActionMap[int(a)]
 }
 
 // ServiceEvent is the definition for an event occurred to Service in scheduler.
