@@ -8,7 +8,7 @@ import (
 
 type SchedulerAdapter interface {
 	Services() ([]*Service, error)
-	ListenForEvents() (EventsChannel, error)
+	ListenForEvents(channel EventsChannel) error
 }
 
 type RegistryAdapter interface {
@@ -19,37 +19,58 @@ type RegistryAdapter interface {
 	AdvertiseAddr() (string, error)
 }
 
-// Event is the definition for a event in scheduler.
-type Event struct {
-	ID    int
-	Name  string
-	Event interface{}
+type Service struct {
+	ID   string
+	Name string
+	Port int
+	IP   string
+	Tags []string
 }
 
-func (event *Event) String() string {
-	return fmt.Sprintf("type: %s, event: %s", event.Name, event.Event)
+func (s *Service) String() string {
+	return fmt.Sprintf("service: %s, id: %s at %s:%d", s.Name, s.ID, s.IP, s.Port)
+}
+
+func (s *Service) MapKey() string {
+	return fmt.Sprintf("%s:%d", s.IP, s.Port)
+}
+
+type ServiceAction int
+
+const (
+	// ServiceWentUp denotes service availability
+	ServiceWentUp ServiceAction = 1 << iota
+
+	// ServiceWentDown denotes service unavailability
+	ServiceWentDown
+)
+
+const serviceActionMap = map[ServiceAction]string{
+	ServiceWentUp:   "went up",
+	ServiceWentDown: "went down",
+}
+
+func (a ServiceAction) String() string {
+	return serviceActionMap[a]
+}
+
+// ServiceEvent is the definition for an event occurred to Service in scheduler.
+type ServiceEvent struct {
+	Service       *Service
+	Action        ServiceAction
+	OriginalEvent interface{}
+}
+
+func (event *ServiceEvent) String() string {
+	return fmt.Sprintf("%s — %s", event.Service, event.Action)
 }
 
 // EventsChannel is a channel to receive events upon.
-type EventsChannel chan *Event
+type EventsChannel chan *ServiceEvent
 
 type Config struct {
 	Marathon       string
 	Consul         *url.URL
 	DryRun         bool
 	ResyncInterval time.Duration
-}
-
-type Service struct {
-	ID    string
-	Name  string
-	Port  int
-	IP    string
-	Tags  []string
-	Attrs map[string]string
-	TTL   int
-}
-
-func (s *Service) MapKey() string {
-	return fmt.Sprintf("%s:%d", s.IP, s.Port)
 }

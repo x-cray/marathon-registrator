@@ -29,29 +29,31 @@ func New(marathonURL string) (*MarathonAdapter, error) {
 	return &MarathonAdapter{client: client}, nil
 }
 
-func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
+func (m *MarathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	update := make(marathon.EventsChannel, 5)
-	result := make(types.EventsChannel, 5)
-	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS|marathon.EVENTS_SUBSCRIPTIONS); err != nil {
-		return nil, err
+	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS|marathon.EVENT_FRAMEWORK_MESSAGE); err != nil {
+		return err
 	}
 
 	// Convert Marathon events to abstract events and write to output channel.
 	go func() {
 		for {
 			event := <-update
-			result <- &types.Event{
-				ID:    event.ID,
-				Name:  event.Name,
-				Event: event.Event,
-			}
+			channel <- toServiceEvent(event)
 		}
 	}()
 
-	return result, nil
+	return nil
 }
 
-func serviceFromTask(task *marathon.Task, port int, app *marathon.Application) (*types.Service, error) {
+func toServiceEvent(marathonEvent *marathon.Event) *types.Event {
+	return &types.ServiceEvent{
+
+		OriginalEvent: marathonEvent.Event,
+	}
+}
+
+func toService(task *marathon.Task, port int, app *marathon.Application) (*types.Service, error) {
 	taskIP, err := net.ResolveIPAddr("ip", task.Host)
 	if err != nil {
 		return nil, err
@@ -80,7 +82,7 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 	for _, app := range applications.Apps {
 		for _, task := range app.Tasks {
 			for _, port := range task.Ports {
-				service, err := serviceFromTask(task, port, &app)
+				service, err := toService(task, port, &app)
 				if err != nil {
 					return nil, err
 				}

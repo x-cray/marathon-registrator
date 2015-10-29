@@ -37,17 +37,18 @@ func New(c *types.Config) (*Bridge, error) {
 }
 
 func (b *Bridge) ProcessSchedulerEvents() error {
-	eventsChannel, err := b.scheduler.ListenForEvents()
+	marathonEvents := make(types.EventsChannel, 5)
+	err := b.scheduler.ListenForEvents(marathonEvents)
 	if err != nil {
 		return err
 	}
 
 	log.WithField("prefix", "bridge").Info("Registered for scheduler event stream")
 	for {
-		event := <-eventsChannel
+		event := <-marathonEvents
 		log.WithFields(log.Fields{
 			"prefix": "bridge",
-			"event":  event.Event,
+			"event":  event,
 		}).Debug("Received scheduler event")
 	}
 

@@ -71,6 +71,9 @@ func main() {
 
 	err = b.ProcessSchedulerEvents()
 	assert(err)
+
+	close(quit)
+	log.Fatal("Scheduler event loop closed")
 }
 
 func getConfig() (*types.Config, error) {
