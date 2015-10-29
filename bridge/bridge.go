@@ -44,17 +44,17 @@ func (b *Bridge) ProcessSchedulerEvents() error {
 
 	log.WithField("prefix", "bridge").Info("Registered for scheduler event stream")
 	for {
-		event := <- eventsChannel
+		event := <-eventsChannel
 		log.WithFields(log.Fields{
 			"prefix": "bridge",
-			"event": event.Event,
+			"event":  event.Event,
 		}).Debug("Received scheduler event")
 	}
 
 	return nil
 }
 
-// Perform full synchronization of Marathon tasks to service registry.
+// Sync performs full synchronization of Marathon tasks to service registry.
 func (b *Bridge) Sync() error {
 	b.Lock()
 	defer b.Unlock()

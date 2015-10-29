@@ -10,8 +10,6 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 )
 
-const DefaultInterval = "10s"
-
 func New(uri *url.URL, dryRun bool) (*ConsulAdapter, error) {
 	config := consulapi.DefaultConfig()
 	config.Address = uri.Host

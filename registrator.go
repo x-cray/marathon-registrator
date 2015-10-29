@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log/syslog"
+	"time"
 	"os"
 
 	"github.com/x-cray/marathon-service-registrator/bridge"
@@ -51,6 +52,22 @@ func main() {
 	if syncErr != nil {
 		log.Errorf("Failed to sync services: %v", syncErr)
 	}
+
+	quit := make(chan bool)
+
+	// Start the resync timer.
+	ticker := time.NewTicker(config.ResyncInterval)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				b.Sync()
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 
 	err = b.ProcessSchedulerEvents()
 	assert(err)

@@ -15,12 +15,12 @@ type MarathonAdapter struct {
 	client marathon.Marathon
 }
 
-func New(marathonUri string) (*MarathonAdapter, error) {
+func New(marathonURL string) (*MarathonAdapter, error) {
 	config := marathon.NewDefaultConfig()
-	config.URL = marathonUri
-	config.EventsTransport = marathon.EVENTS_TRANSPORT_SSE
+	config.URL = marathonURL
+	config.EventsTransport = marathon.EventsTransportSSE
 
-	log.WithField("prefix", "marathon").Infof("Connecting to Marathon at %v", marathonUri)
+	log.WithField("prefix", "marathon").Infof("Connecting to Marathon at %v", marathonURL)
 	client, err := marathon.NewClient(config)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func New(marathonUri string) (*MarathonAdapter, error) {
 func (m *MarathonAdapter) ListenForEvents() (types.EventsChannel, error) {
 	update := make(marathon.EventsChannel, 5)
 	result := make(types.EventsChannel, 5)
-	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS | marathon.EVENTS_SUBSCRIPTIONS); err != nil {
+	if err := m.client.AddEventsListener(update, marathon.EVENTS_APPLICATIONS|marathon.EVENTS_SUBSCRIPTIONS); err != nil {
 		return nil, err
 	}
 
