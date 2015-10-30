@@ -60,9 +60,12 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 		}
 	case types.ServiceStopped:
 		// Service stopped, deregister and remove it from cache.
-		if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
-			b.registry.Deregister(service)
-			delete(b.schedulerServices, event.ServiceID)
+		// Only consider services registered on current registry advertized address.
+		if event.IP == b.registryAdvertizeAddr {
+			if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
+				b.registry.Deregister(service)
+				delete(b.schedulerServices, event.ServiceID)
+			}
 		}
 	case types.ServiceWentUp:
 		// Service went up, register it.

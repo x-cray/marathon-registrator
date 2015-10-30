@@ -69,6 +69,7 @@ func (action ServiceAction) String() string {
 // ServiceEvent is the definition for an event occurred to Service in scheduler.
 type ServiceEvent struct {
 	ServiceID     string
+	IP            string
 	Action        ServiceAction
 	OriginalEvent interface{}
 }

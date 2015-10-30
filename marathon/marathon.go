@@ -31,6 +31,7 @@ type MarathonAdapter struct {
 func New(marathonURL string) (*MarathonAdapter, error) {
 	config := marathon.NewDefaultConfig()
 	config.URL = marathonURL
+	config.RequestTimeout = 60 // 60 seconds
 	config.EventsTransport = marathon.EventsTransportSSE
 
 	log.WithField("prefix", "marathon").Infof("Connecting to Marathon at %v", marathonURL)
@@ -73,6 +74,16 @@ func toServiceEvent(marathonEvent *marathon.Event) (result *types.ServiceEvent) 
 	statusUpdateEvent, ok := marathonEvent.Event.(*marathon.EventStatusUpdate)
 	if ok {
 		result.ServiceID = statusUpdateEvent.TaskID
+		address, err := net.ResolveIPAddr("ip", statusUpdateEvent.Host)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"prefix":   "marathon",
+				"hostname": statusUpdateEvent.Host,
+				"err":      err,
+			}).Warn("Unable to resolve address")
+		} else {
+			result.IP = address.IP.String()
+		}
 		if terminalTaskStatuses[statusUpdateEvent.TaskStatus] {
 			result.Action = types.ServiceStopped
 		} else if startupTaskStatuses[statusUpdateEvent.TaskStatus] {
@@ -81,7 +92,7 @@ func toServiceEvent(marathonEvent *marathon.Event) (result *types.ServiceEvent) 
 	}
 
 	// Health status change event suggests that service should be
-	// registered/deregistered in service registry.
+	// registered/unregistered in service registry.
 	healthStatusChangeEvent, ok := marathonEvent.Event.(*marathon.EventHealthCheckChanged)
 	if ok {
 		result.ServiceID = healthStatusChangeEvent.TaskID
@@ -131,10 +142,11 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 
 				log.WithFields(log.Fields{
 					"prefix": "marathon",
+					"id":     service.ID,
 					"name":   service.Name,
 					"ip":     service.IP,
 					"port":   service.Port,
-				}).Debugf("Service")
+				}).Debug("Service")
 				result = append(result, service)
 			}
 		}

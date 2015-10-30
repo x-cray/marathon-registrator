@@ -7,9 +7,8 @@ deps:
 
 test:
 	@echo "--> Running tests"
-	go test -v -cover ./...
+	@go test -v -cover ./...
 
 format:
 	@echo "--> Running go fmt"
 	@go fmt $(PACKAGES)
-

@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"log/syslog"
-	"time"
 	"os"
+	"time"
 
 	"github.com/x-cray/marathon-service-registrator/bridge"
 	"github.com/x-cray/marathon-service-registrator/types"
@@ -13,6 +13,10 @@ import (
 	logrusSyslog "github.com/Sirupsen/logrus/hooks/syslog"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+const (
+	reconnectInterval = 5 * time.Second
 )
 
 var (
@@ -39,6 +43,15 @@ func assert(err error) {
 	}
 }
 
+func trySync(b *bridge.Bridge) bool {
+	if err := b.Sync(); err != nil {
+		log.Errorf("Failed to sync services: %v", err)
+		return false
+	}
+
+	return true
+}
+
 func main() {
 	config, err := getConfig()
 	assert(err)
@@ -48,9 +61,12 @@ func main() {
 	assert(err)
 
 	log.Info("Performing initial sync")
-	syncErr := b.Sync()
-	if syncErr != nil {
-		log.Errorf("Failed to sync services: %v", syncErr)
+	for {
+		if trySync(b) {
+			break
+		}
+		log.Infof("Retrying initial sync in %v", reconnectInterval)
+		time.Sleep(reconnectInterval)
 	}
 
 	quit := make(chan bool)
@@ -61,7 +77,7 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				b.Sync()
+				trySync(b)
 			case <-quit:
 				ticker.Stop()
 				return
@@ -69,8 +85,14 @@ func main() {
 		}
 	}()
 
-	err = b.ProcessSchedulerEvents()
-	assert(err)
+	for {
+		err = b.ProcessSchedulerEvents()
+		if err == nil {
+			break
+		}
+		log.Info("Retrying event stream connection in %v", reconnectInterval)
+		time.Sleep(reconnectInterval)
+	}
 
 	close(quit)
 	log.Fatal("Scheduler event loop closed")
