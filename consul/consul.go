@@ -116,6 +116,7 @@ func (r *ConsulAdapter) Services() ([]*types.Service, error) {
 
 		log.WithFields(log.Fields{
 			"prefix": "consul",
+			"id":     v.ID,
 			"name":   v.Service,
 			"ip":     v.Address,
 			"port":   v.Port,

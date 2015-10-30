@@ -43,7 +43,10 @@ func (b *Bridge) getCachedService(serviceID, actionText string) *types.Service {
 		return service
 	}
 
-	log.Warningf("Service with id = %s was not found in scheduler cache. Could not %s.", serviceID, actionText)
+	log.WithFields(log.Fields{
+		"prefix": "bridge",
+		"map":    b.schedulerServices,
+	}).Warningf("Service %s was not found in scheduler cache (has %d entries). Could not %s.", serviceID, len(b.schedulerServices), actionText)
 	return nil
 }
 
@@ -54,13 +57,16 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 	switch event.Action {
 	case types.ServiceStarted:
 		// New service is started, we need to refresh service cache.
-		_, err := b.refreshSchedulerServices()
-		if err != nil {
-			return err
+		// Only consider services registered on current registry's advertized address.
+		if event.IP == b.registryAdvertizeAddr {
+			_, err := b.refreshSchedulerServices()
+			if err != nil {
+				return err
+			}
 		}
 	case types.ServiceStopped:
 		// Service stopped, deregister and remove it from cache.
-		// Only consider services registered on current registry advertized address.
+		// Only consider services registered on current registry's advertized address.
 		if event.IP == b.registryAdvertizeAddr {
 			if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
 				b.registry.Deregister(service)
@@ -165,6 +171,8 @@ func (b *Bridge) Sync() error {
 
 func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
 	var err error
+
+	log.WithField("prefix", "bridge").Info("Refreshing scheduler services")
 
 	// Get registry's advertize address.
 	b.registryAdvertizeAddr, err = b.registry.AdvertiseAddr()
