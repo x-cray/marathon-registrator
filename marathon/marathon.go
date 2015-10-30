@@ -11,6 +11,19 @@ import (
 	marathon "github.com/x-cray/go-marathon"
 )
 
+var (
+	startupTaskStatuses = map[string]bool{
+		"TASK_RUNNING": true,
+	}
+
+	terminalTaskStatuses = map[string]bool{
+		"TASK_FINISHED": true,
+		"TASK_FAILED":   true,
+		"TASK_KILLED":   true,
+		"TASK_LOST":     true,
+	}
+)
+
 type MarathonAdapter struct {
 	client marathon.Marathon
 }
@@ -46,11 +59,40 @@ func (m *MarathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	return nil
 }
 
-func toServiceEvent(marathonEvent *marathon.Event) *types.ServiceEvent {
-	return &types.ServiceEvent{
-
+func toServiceEvent(marathonEvent *marathon.Event) (result *types.ServiceEvent) {
+	// Instantiate result object.
+	result = &types.ServiceEvent{
 		OriginalEvent: marathonEvent.Event,
+		Action:        types.ServiceUnchanged,
 	}
+
+	// Task status update event suggests that Marathon cached services list
+	// should be updated:
+	// - when ServiceStopped we need to remove service from cache
+	// - when ServiceStarted we need to repopulate cache with fresh Marathon services
+	statusUpdateEvent, ok := marathonEvent.Event.(*marathon.EventStatusUpdate)
+	if ok {
+		result.ServiceID = statusUpdateEvent.TaskID
+		if terminalTaskStatuses[statusUpdateEvent.TaskStatus] {
+			result.Action = types.ServiceStopped
+		} else if startupTaskStatuses[statusUpdateEvent.TaskStatus] {
+			result.Action = types.ServiceStarted
+		}
+	}
+
+	// Health status change event suggests that service should be
+	// registered/deregistered in service registry.
+	healthStatusChangeEvent, ok := marathonEvent.Event.(*marathon.EventHealthCheckChanged)
+	if ok {
+		result.ServiceID = healthStatusChangeEvent.TaskID
+		if healthStatusChangeEvent.Alive {
+			result.Action = types.ServiceWentUp
+		} else {
+			result.Action = types.ServiceWentDown
+		}
+	}
+
+	return
 }
 
 func toService(task *marathon.Task, port int, app *marathon.Application) (*types.Service, error) {

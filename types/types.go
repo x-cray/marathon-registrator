@@ -38,31 +38,43 @@ func (s *Service) MapKey() string {
 type ServiceAction int
 
 const (
+	// ServiceUnchanged denotes unchanged service status
+	ServiceUnchanged ServiceAction = 1 << iota
+
 	// ServiceWentUp denotes service availability
-	ServiceWentUp ServiceAction = 1 << iota
+	ServiceWentUp
 
 	// ServiceWentDown denotes service unavailability
 	ServiceWentDown
+
+	// ServiceStarted denotes added service instance
+	ServiceStarted
+
+	// ServiceStopped denotes removed service instance
+	ServiceStopped
 )
 
-var serviceActionMap = map[int]string{
-	int(ServiceWentUp):   "went up",
-	int(ServiceWentDown): "went down",
+var serviceActionDescriptions = map[int]string{
+	int(ServiceUnchanged): "unchanged",
+	int(ServiceWentUp):    "went up",
+	int(ServiceWentDown):  "went down",
+	int(ServiceStarted):   "started",
+	int(ServiceStopped):   "stopped",
 }
 
-func (a ServiceAction) String() string {
-	return serviceActionMap[int(a)]
+func (action ServiceAction) String() string {
+	return serviceActionDescriptions[int(action)]
 }
 
 // ServiceEvent is the definition for an event occurred to Service in scheduler.
 type ServiceEvent struct {
-	Service       *Service
+	ServiceID     string
 	Action        ServiceAction
 	OriginalEvent interface{}
 }
 
 func (event *ServiceEvent) String() string {
-	return fmt.Sprintf("%s — %s", event.Service, event.Action)
+	return fmt.Sprintf("%s — %s, %+v", event.ServiceID, event.Action, event.OriginalEvent)
 }
 
 // EventsChannel is a channel to receive events upon.

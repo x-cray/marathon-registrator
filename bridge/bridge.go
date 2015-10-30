@@ -13,9 +13,11 @@ import (
 type Bridge struct {
 	sync.Mutex
 
-	scheduler types.SchedulerAdapter
-	registry  types.RegistryAdapter
-	config    *types.Config
+	scheduler             types.SchedulerAdapter
+	schedulerServices     map[string]*types.Service
+	registry              types.RegistryAdapter
+	registryAdvertizeAddr string
+	config                *types.Config
 }
 
 func New(c *types.Config) (*Bridge, error) {
@@ -36,6 +38,47 @@ func New(c *types.Config) (*Bridge, error) {
 	}, nil
 }
 
+func (b *Bridge) getCachedService(serviceID, actionText string) *types.Service {
+	if service, ok := b.schedulerServices[serviceID]; ok {
+		return service
+	}
+
+	log.Warningf("Service with id = %s was not found in scheduler cache. Could not %s.", serviceID, actionText)
+	return nil
+}
+
+func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
+	b.Lock()
+	defer b.Unlock()
+
+	switch event.Action {
+	case types.ServiceStarted:
+		// New service is started, we need to refresh service cache.
+		_, err := b.refreshSchedulerServices()
+		if err != nil {
+			return err
+		}
+	case types.ServiceStopped:
+		// Service stopped, deregister and remove it from cache.
+		if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
+			b.registry.Deregister(service)
+			delete(b.schedulerServices, event.ServiceID)
+		}
+	case types.ServiceWentUp:
+		// Service went up, register it.
+		if service := b.getCachedService(event.ServiceID, "register"); service != nil {
+			b.registry.Register(service)
+		}
+	case types.ServiceWentDown:
+		// Service went down, deregister it.
+		if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
+			b.registry.Deregister(service)
+		}
+	}
+
+	return nil
+}
+
 func (b *Bridge) ProcessSchedulerEvents() error {
 	marathonEvents := make(types.EventsChannel, 5)
 	err := b.scheduler.ListenForEvents(marathonEvents)
@@ -46,10 +89,15 @@ func (b *Bridge) ProcessSchedulerEvents() error {
 	log.WithField("prefix", "bridge").Info("Registered for scheduler event stream")
 	for {
 		event := <-marathonEvents
-		log.WithFields(log.Fields{
-			"prefix": "bridge",
-			"event":  event,
-		}).Debug("Received scheduler event")
+		if event.Action != types.ServiceUnchanged {
+			log.WithFields(log.Fields{
+				"prefix":  "bridge",
+				"service": event.ServiceID,
+				"action":  event.Action,
+				"event":   event.OriginalEvent,
+			}).Debug("Received scheduler event")
+			b.processServiceEvent(event)
+		}
 	}
 
 	return nil
@@ -68,13 +116,6 @@ func (b *Bridge) Sync() error {
 		return err
 	}
 
-	// Get registry's advertize address.
-	advertizeAddr, err := b.registry.AdvertiseAddr()
-	if err != nil {
-		return err
-	}
-
-	log.WithField("prefix", "bridge").Infof("Registry advertize address is %s", advertizeAddr)
 	log.WithField("prefix", "bridge").Infof("Received %d services from registry", len(registryServices))
 
 	// Build ip:port-indexed service map.
@@ -83,28 +124,13 @@ func (b *Bridge) Sync() error {
 		registryServicesMap[service.MapKey()] = service
 	}
 
-	// Get services from Marathon.
-	marathonServices, err := b.scheduler.Services()
+	schedulerServicesMap, err := b.refreshSchedulerServices()
 	if err != nil {
 		return err
 	}
 
-	// Build service map of services running on registry advertized host.
-	marathonServicesMap := make(map[string]*types.Service)
-	for _, service := range marathonServices {
-		if service.IP == advertizeAddr {
-			marathonServicesMap[service.MapKey()] = service
-		}
-	}
-
-	log.WithField("prefix", "bridge").Infof(
-		"Received %d services from Marathon, %d are running on registry advertized address",
-		len(marathonServices),
-		len(marathonServicesMap),
-	)
-
-	// Register Marathon services absent in registry.
-	for _, marathonService := range marathonServicesMap {
+	// Register scheduler services absent in registry.
+	for _, marathonService := range schedulerServicesMap {
 		// If service is not yet registered we need to register it.
 		if registryServicesMap[marathonService.MapKey()] == nil {
 			err := b.registry.Register(marathonService)
@@ -115,10 +141,10 @@ func (b *Bridge) Sync() error {
 		}
 	}
 
-	// Deregister dangling services (existing in registry and absent in Marathon).
+	// Deregister dangling services (existing in registry and absent in scheduler).
 	for _, registryService := range registryServicesMap {
-		// If service is registered and we don't have it in Marathon we need to deregister it.
-		if marathonServicesMap[registryService.MapKey()] == nil {
+		// If service is registered and we don't have it in scheduler we need to deregister it.
+		if schedulerServicesMap[registryService.MapKey()] == nil {
 			err := b.registry.Deregister(registryService)
 			if err != nil {
 				return err
@@ -132,4 +158,41 @@ func (b *Bridge) Sync() error {
 	}
 
 	return nil
+}
+
+func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
+	var err error
+
+	// Get registry's advertize address.
+	b.registryAdvertizeAddr, err = b.registry.AdvertiseAddr()
+	if err != nil {
+		return nil, err
+	}
+
+	// Get services from scheduler.
+	schedulerServicesArray, err := b.scheduler.Services()
+	if err != nil {
+		return nil, err
+	}
+
+	log.WithField("prefix", "bridge").Infof("Registry advertize address is %s", b.registryAdvertizeAddr)
+
+	// Build 2 maps of services running on registry's advertized host:
+	// ServiceID-indexed and ip:port-indexed
+	ipPortServices := make(map[string]*types.Service)
+	b.schedulerServices = make(map[string]*types.Service)
+	for _, service := range schedulerServicesArray {
+		if service.IP == b.registryAdvertizeAddr {
+			ipPortServices[service.MapKey()] = service
+			b.schedulerServices[service.ID] = service
+		}
+	}
+
+	log.WithField("prefix", "bridge").Infof(
+		"Received %d services from scheduler, %d are running on registry advertized address",
+		len(schedulerServicesArray),
+		len(ipPortServices),
+	)
+
+	return ipPortServices, nil
 }
