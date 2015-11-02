@@ -102,15 +102,15 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 }
 
 func (b *Bridge) ProcessSchedulerEvents() error {
-	marathonEvents := make(types.EventsChannel, 5)
-	err := b.scheduler.ListenForEvents(marathonEvents)
+	schedulerEvents := make(types.EventsChannel, 5)
+	err := b.scheduler.ListenForEvents(schedulerEvents)
 	if err != nil {
 		return err
 	}
 
 	log.WithField("prefix", "bridge").Info("Registered for scheduler event stream")
 	for {
-		event := <-marathonEvents
+		event := <-schedulerEvents
 		if event.Action != types.ServiceUnchanged {
 			log.WithFields(log.Fields{
 				"prefix":  "bridge",
@@ -125,7 +125,7 @@ func (b *Bridge) ProcessSchedulerEvents() error {
 	return nil
 }
 
-// Sync performs full synchronization of Marathon tasks to service registry.
+// Sync performs full synchronization of scheduler tasks to service registry.
 func (b *Bridge) Sync() error {
 	b.Lock()
 	defer b.Unlock()
