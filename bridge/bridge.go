@@ -43,11 +43,15 @@ func (b *Bridge) getCachedService(serviceID, actionText string) *types.Service {
 		return service
 	}
 
+	log.WithField("prefix", "bridge").Warningf("Service %s was not found in scheduler cache (has %d entries). Could not %s.", serviceID, len(b.schedulerServices), actionText)
+	return nil
+}
+
+func logSkipMessage(ip string) {
 	log.WithFields(log.Fields{
 		"prefix": "bridge",
-		"map":    b.schedulerServices,
-	}).Warningf("Service %s was not found in scheduler cache (has %d entries). Could not %s.", serviceID, len(b.schedulerServices), actionText)
-	return nil
+		"ip":     ip,
+	}).Debug("Skipping event due to unrelated service host")
 }
 
 func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
@@ -57,12 +61,9 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 	switch event.Action {
 	case types.ServiceStarted:
 		// New service is started, we need to refresh service cache.
-		// Only consider services registered on current registry's advertized address.
-		if event.IP == b.registryAdvertizeAddr {
-			_, err := b.refreshSchedulerServices()
-			if err != nil {
-				return err
-			}
+		_, err := b.refreshSchedulerServices()
+		if err != nil {
+			return err
 		}
 	case types.ServiceStopped:
 		// Service stopped, deregister and remove it from cache.
@@ -72,16 +73,28 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 				b.registry.Deregister(service)
 				delete(b.schedulerServices, event.ServiceID)
 			}
+		} else {
+			logSkipMessage(event.IP)
 		}
 	case types.ServiceWentUp:
 		// Service went up, register it.
 		if service := b.getCachedService(event.ServiceID, "register"); service != nil {
-			b.registry.Register(service)
+			// Only consider services registered on current registry's advertized address.
+			if service.IP == b.registryAdvertizeAddr {
+				b.registry.Register(service)
+			} else {
+				logSkipMessage(service.IP)
+			}
 		}
 	case types.ServiceWentDown:
 		// Service went down, deregister it.
 		if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
-			b.registry.Deregister(service)
+			// Only consider services registered on current registry's advertized address.
+			if service.IP == b.registryAdvertizeAddr {
+				b.registry.Deregister(service)
+			} else {
+				logSkipMessage(service.IP)
+			}
 		}
 	}
 
@@ -139,10 +152,11 @@ func (b *Bridge) Sync() error {
 	}
 
 	// Register scheduler services absent in registry.
-	for _, marathonService := range schedulerServicesMap {
+	for _, schedulerService := range schedulerServicesMap {
 		// If service is not yet registered we need to register it.
-		if registryServicesMap[marathonService.MapKey()] == nil {
-			err := b.registry.Register(marathonService)
+		// Only consider services registered on current registry's advertized address.
+		if schedulerService.IP == b.registryAdvertizeAddr && registryServicesMap[schedulerService.MapKey()] == nil {
+			err := b.registry.Register(schedulerService)
 			if err != nil {
 				return err
 			}
@@ -170,15 +184,15 @@ func (b *Bridge) Sync() error {
 }
 
 func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
-	var err error
-
 	log.WithField("prefix", "bridge").Info("Refreshing scheduler services")
 
 	// Get registry's advertize address.
-	b.registryAdvertizeAddr, err = b.registry.AdvertiseAddr()
+	addr, err := b.registry.AdvertiseAddr()
 	if err != nil {
 		return nil, err
 	}
+
+	b.registryAdvertizeAddr = addr
 
 	// Get services from scheduler.
 	schedulerServicesArray, err := b.scheduler.Services()
@@ -188,15 +202,13 @@ func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
 
 	log.WithField("prefix", "bridge").Infof("Registry advertize address is %s", b.registryAdvertizeAddr)
 
-	// Build 2 maps of services running on registry's advertized host:
+	// Build 2 maps of services:
 	// ServiceID-indexed and ip:port-indexed
 	ipPortServices := make(map[string]*types.Service)
 	b.schedulerServices = make(map[string]*types.Service)
 	for _, service := range schedulerServicesArray {
-		if service.IP == b.registryAdvertizeAddr {
-			ipPortServices[service.MapKey()] = service
-			b.schedulerServices[service.ID] = service
-		}
+		ipPortServices[service.MapKey()] = service
+		b.schedulerServices[service.ID] = service
 	}
 
 	log.WithField("prefix", "bridge").Infof(
