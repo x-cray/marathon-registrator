@@ -212,9 +212,8 @@ func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
 	}
 
 	log.WithField("prefix", "bridge").Infof(
-		"Received %d services from scheduler, %d are running on registry advertized address",
+		"Received %d services from scheduler",
 		len(schedulerServicesArray),
-		len(ipPortServices),
 	)
 
 	return ipPortServices, nil
