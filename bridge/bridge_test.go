@@ -9,9 +9,12 @@ import (
 
 	. "github.com/franela/goblin"
 	"github.com/stretchr/testify/mock"
+	log "github.com/Sirupsen/logrus"
 )
 
 func Test(t *testing.T) {
+	log.SetLevel(log.FatalLevel)
+
 	g := Goblin(t)
 	g.Describe("Bridge", func() {
 		var schedulerAdapter *mocks.SchedulerAdapter
