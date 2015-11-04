@@ -4,7 +4,7 @@ ADD . /go/src/github.com/x-cray/marathon-service-registrator
 RUN apk-install -t build-deps go git \
 	&& cd /go/src/github.com/x-cray/marathon-service-registrator \
 	&& export GOPATH=/go \
-	&& go get \
+	&& go get -d -v \
 	&& go build -ldflags "-X main.version $(cat VERSION)" -o /bin/registrator \
 	&& rm -rf /go \
 	&& apk del --purge build-deps

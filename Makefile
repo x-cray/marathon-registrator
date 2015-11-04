@@ -8,7 +8,12 @@ deps:
 	@go get -d -v ./... $(DEPS)
 
 docker:
-	docker build -t $(NAME):$(VERSION) .
+	@echo "--> Building docker image"
+	@docker build -t $(NAME):$(VERSION) .
+
+docker-dev:
+	@echo "--> Building docker dev image"
+	@docker build -f Dockerfile.dev -t $(NAME):dev .
 
 test:
 	@echo "--> Running tests"
