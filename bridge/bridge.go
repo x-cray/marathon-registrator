@@ -38,7 +38,7 @@ func New(c *types.Config) (*Bridge, error) {
 	}, nil
 }
 
-func (b *Bridge) getCachedService(serviceID, actionText string) *types.Service {
+func (b *Bridge) cachedService(serviceID, actionText string) *types.Service {
 	if service, ok := b.schedulerServices[serviceID]; ok {
 		return service
 	}
@@ -69,7 +69,7 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 		// Service stopped, deregister and remove it from cache.
 		// Only consider services registered on current registry's advertized address.
 		if event.IP == b.registryAdvertizeAddr {
-			if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
+			if service := b.cachedService(event.ServiceID, "deregister"); service != nil {
 				b.registry.Deregister(service)
 				delete(b.schedulerServices, event.ServiceID)
 			}
@@ -78,7 +78,7 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 		}
 	case types.ServiceWentUp:
 		// Service went up, register it.
-		if service := b.getCachedService(event.ServiceID, "register"); service != nil {
+		if service := b.cachedService(event.ServiceID, "register"); service != nil {
 			// Only consider services registered on current registry's advertized address.
 			if service.IP == b.registryAdvertizeAddr {
 				b.registry.Register(service)
@@ -88,7 +88,7 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 		}
 	case types.ServiceWentDown:
 		// Service went down, deregister it.
-		if service := b.getCachedService(event.ServiceID, "deregister"); service != nil {
+		if service := b.cachedService(event.ServiceID, "deregister"); service != nil {
 			// Only consider services registered on current registry's advertized address.
 			if service.IP == b.registryAdvertizeAddr {
 				b.registry.Deregister(service)

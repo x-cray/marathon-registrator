@@ -7,9 +7,9 @@ import (
 	"github.com/x-cray/marathon-service-registrator/mocks"
 	"github.com/x-cray/marathon-service-registrator/types"
 
+	log "github.com/Sirupsen/logrus"
 	. "github.com/franela/goblin"
 	"github.com/stretchr/testify/mock"
-	log "github.com/Sirupsen/logrus"
 )
 
 func Test(t *testing.T) {
