@@ -29,3 +29,7 @@ _testmain.go
 
 # OS X
 .DS_Store
+
+# Built binary
+marathon-service-registrator
+
