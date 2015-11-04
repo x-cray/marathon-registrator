@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	version        = "0.0.1"
+	version        = ""
 	app            = kingpin.New("registrator", "Automatically registers/deregisters Marathon tasks as services in Consul.").Version(version)
 	consul         = app.Flag("consul", "Address and port of Consul agent").Short('c').Default("http://127.0.0.1:8500").URL()
 	marathon       = app.Flag("marathon", "URL of Marathon instance. Multiple inctances may be specified in case of HA setup: http://addr1:8080,addr2:8080,addr3:8080").Short('m').Default("http://127.0.0.1:8080").String()
