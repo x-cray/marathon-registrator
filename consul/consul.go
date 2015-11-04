@@ -69,6 +69,7 @@ func (r *ConsulAdapter) Deregister(service *types.Service) error {
 	if r.dryRun {
 		log.WithFields(log.Fields{
 			"prefix": "consul",
+			"id":     service.ID,
 			"name":   service.Name,
 			"ip":     service.IP,
 			"port":   service.Port,
