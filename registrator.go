@@ -119,19 +119,21 @@ func getConfig() (*types.Config, error) {
 	}
 
 	// Setup the logging.
-	if level, err := log.ParseLevel(*logLevel); err != nil {
+	level, err := log.ParseLevel(*logLevel)
+	if err != nil {
 		return nil, err
-	} else {
-		log.SetFormatter(new(prefixed.TextFormatter))
-		log.SetLevel(level)
 	}
 
+	log.SetFormatter(new(prefixed.TextFormatter))
+	log.SetLevel(level)
+
 	if *enableSyslog {
-		if hook, err := logrusSyslog.NewSyslogHook("", "", syslog.LOG_DEBUG, app.Name); err != nil {
+		hook, err := logrusSyslog.NewSyslogHook("", "", syslog.LOG_DEBUG, app.Name)
+		if err != nil {
 			return nil, err
-		} else {
-			log.AddHook(hook)
 		}
+
+		log.AddHook(hook)
 	}
 
 	return c, nil

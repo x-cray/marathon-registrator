@@ -8,6 +8,6 @@ install:
   - make deps
 
 script:
-  - make test
+  - make ci-test
 
 sudo: false

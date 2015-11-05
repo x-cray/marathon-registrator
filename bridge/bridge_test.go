@@ -4,274 +4,344 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/x-cray/marathon-service-registrator/mocks"
 	"github.com/x-cray/marathon-service-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
-	. "github.com/franela/goblin"
-	"github.com/stretchr/testify/mock"
+	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func Test(t *testing.T) {
+func TestBridge(t *testing.T) {
 	log.SetLevel(log.FatalLevel)
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Bridge Suite")
+}
 
-	g := Goblin(t)
-	g.Describe("Bridge", func() {
-		var schedulerAdapter *mocks.SchedulerAdapter
-		var registryAdapter *mocks.RegistryAdapter
+var _ = Describe("Bridge", func() {
+	var (
+		mockCtrl         *gomock.Controller
+		schedulerAdapter *types.MockSchedulerAdapter
+		registryAdapter  *types.MockRegistryAdapter
+	)
 
-		g.BeforeEach(func() {
-			schedulerAdapter = new(mocks.SchedulerAdapter)
-			registryAdapter = new(mocks.RegistryAdapter)
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		schedulerAdapter = types.NewMockSchedulerAdapter(mockCtrl)
+		registryAdapter = types.NewMockRegistryAdapter(mockCtrl)
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	Describe("Sync()", func() {
+		It("Should forward errors received from RegistryAdapter.Services()", func() {
+			// Arrange.
+			registryAdapter.EXPECT().Services().Return([]*types.ServiceGroup{}, errors.New("registry-error"))
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
+
+			// Act.
+			err := bridge.Sync()
+
+			// Assert.
+			Ω(err).Should(HaveOccurred())
 		})
 
-		g.Describe("Sync()", func() {
-			g.It("Should forward errors received from RegistryAdapter.Services()", func() {
-				// Arrange.
-				registryAdapter.On("Services").Return([]*types.Service{}, errors.New("registry-error"))
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+		It("Should forward errors received from RegistryAdapter.AdvertiseAddr()", func() {
+			// Arrange.
+			registryAdapter.EXPECT().Services().Return([]*types.ServiceGroup{}, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("", errors.New("registry-error"))
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-				// Act.
-				err := bridge.Sync()
+			// Act.
+			err := bridge.Sync()
 
-				// Assert.
-				registryAdapter.AssertExpectations(t)
-				g.Assert(err.Error()).Equal("registry-error")
-			})
+			// Assert.
+			Ω(err).Should(HaveOccurred())
+		})
 
-			g.It("Should forward errors received from RegistryAdapter.AdvertiseAddr()", func() {
-				// Arrange.
-				registryAdapter.On("Services").Return([]*types.Service{}, nil)
-				registryAdapter.On("AdvertiseAddr").Return("", errors.New("registry-error"))
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+		It("Should forward errors received from SchedulerAdapter.Services()", func() {
+			// Arrange.
+			schedulerAdapter.EXPECT().Services().Return([]*types.ServiceGroup{}, errors.New("scheduler-error"))
+			registryAdapter.EXPECT().Services().Return([]*types.ServiceGroup{}, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("", nil)
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-				// Act.
-				err := bridge.Sync()
+			// Act.
+			err := bridge.Sync()
 
-				// Assert.
-				registryAdapter.AssertExpectations(t)
-				g.Assert(err.Error()).Equal("registry-error")
-			})
+			// Assert.
+			Ω(err).Should(HaveOccurred())
+		})
 
-			g.It("Should forward errors received from SchedulerAdapter.Services()", func() {
-				// Arrange.
-				schedulerAdapter.On("Services").Return([]*types.Service{}, errors.New("scheduler-error"))
-				registryAdapter.On("Services").Return([]*types.Service{}, nil)
-				registryAdapter.On("AdvertiseAddr").Return("", nil)
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+		It("Should do nothing if service sets in scheduler and registry are empty", func() {
+			// Arrange.
+			schedulerAdapter.EXPECT().Services().Return([]*types.ServiceGroup{}, nil)
+			registryAdapter.EXPECT().Services().Return([]*types.ServiceGroup{}, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
 
-				// Act.
-				err := bridge.Sync()
+			// Call assertions
+			registryAdapter.EXPECT().Register(gomock.Any()).Times(0)
+			registryAdapter.EXPECT().Deregister(gomock.Any()).Times(0)
 
-				// Assert.
-				schedulerAdapter.AssertExpectations(t)
-				g.Assert(err.Error()).Equal("scheduler-error")
-			})
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-			g.It("Should do nothing if service sets in scheduler and registry are empty", func() {
-				// Arrange.
-				schedulerAdapter.On("Services").Return([]*types.Service{}, nil)
-				registryAdapter.On("Services").Return([]*types.Service{}, nil)
-				registryAdapter.On("AdvertiseAddr").Return("10.10.10.10", nil)
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+			// Act.
+			bridge.Sync()
+		})
 
-				// Act.
-				bridge.Sync()
-
-				// Assert.
-				schedulerAdapter.AssertExpectations(t)
-				registryAdapter.AssertExpectations(t)
-				registryAdapter.AssertNotCalled(t, "Register")
-				registryAdapter.AssertNotCalled(t, "Deregister")
-			})
-
-			g.It("Should do nothing if service sets in scheduler and registry match", func() {
-				// Arrange.
-				schedulerServices := []*types.Service{
-					&types.Service{
-						Name: "db-server",
-						IP:   "10.10.10.10",
-						Port: 27017,
+		It("Should do nothing if service sets in scheduler and registry match", func() {
+			// Arrange.
+			schedulerServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+							Name:         "db-server",
+							OriginalPort: 27017,
+							ExposedPort:  31045,
+						},
 					},
-					&types.Service{
-						Name: "app-server",
-						IP:   "10.10.10.10",
-						Port: 3000,
+				},
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:         "app-server",
+							OriginalPort: 3000,
+							ExposedPort:  31046,
+						},
 					},
-				}
-				registryServices := []*types.Service{
-					&types.Service{
-						Name: "db-server",
-						IP:   "10.10.10.10",
-						Port: 27017,
+				},
+			}
+			registryServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:          "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+							Name:        "db-server",
+							ExposedPort: 31045,
+						},
 					},
-					&types.Service{
-						Name: "app-server",
-						IP:   "10.10.10.10",
-						Port: 3000,
+				},
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:        "app-server",
+							ExposedPort: 31046,
+						},
 					},
-				}
-				schedulerAdapter.On("Services").Return(schedulerServices, nil)
-				registryAdapter.On("Services").Return(registryServices, nil)
-				registryAdapter.On("AdvertiseAddr").Return("10.10.10.10", nil)
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+				},
+			}
+			schedulerAdapter.EXPECT().Services().Return(schedulerServices, nil)
+			registryAdapter.EXPECT().Services().Return(registryServices, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
 
-				// Act.
-				bridge.Sync()
+			// Call assertions
+			registryAdapter.EXPECT().Register(gomock.Any()).Times(0)
+			registryAdapter.EXPECT().Deregister(gomock.Any()).Times(0)
 
-				// Assert.
-				schedulerAdapter.AssertExpectations(t)
-				registryAdapter.AssertExpectations(t)
-				registryAdapter.AssertNotCalled(t, "Register")
-				registryAdapter.AssertNotCalled(t, "Deregister")
-			})
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-			g.It("Should register 1 service absent from registry but present in scheduler", func() {
-				// Arrange.
-				schedulerServices := []*types.Service{
-					&types.Service{
-						Name: "db-server",
-						IP:   "10.10.10.10",
-						Port: 27017,
+			// Act.
+			bridge.Sync()
+		})
+
+		It("Should register 1 service absent from registry but present in scheduler", func() {
+			// Arrange.
+			schedulerServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+							Name:         "db-server",
+							OriginalPort: 27017,
+							ExposedPort:  31045,
+						},
 					},
-					&types.Service{
-						Name: "app-server",
-						IP:   "10.10.10.10",
-						Port: 3000,
+				},
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:         "app-server",
+							OriginalPort: 3000,
+							ExposedPort:  31046,
+						},
 					},
-				}
-				registryServices := []*types.Service{
-					&types.Service{
-						Name: "app-server",
-						IP:   "10.10.10.10",
-						Port: 3000,
+				},
+			}
+			registryServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:        "app-server",
+							ExposedPort: 31046,
+						},
 					},
-				}
-				schedulerAdapter.On("Services").Return(schedulerServices, nil)
-				registryAdapter.On("Services").Return(registryServices, nil)
-				registryAdapter.On("AdvertiseAddr").Return("10.10.10.10", nil)
-				registryAdapter.On("Register", mock.AnythingOfType("*types.Service")).Run(func(args mock.Arguments) {
-					service := args.Get(0).(*types.Service)
+				},
+			}
+			schedulerAdapter.EXPECT().Services().Return(schedulerServices, nil)
+			registryAdapter.EXPECT().Services().Return(registryServices, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
+			registryAdapter.EXPECT().Register(gomock.Any()).Do(func(group *types.ServiceGroup) {
+				Ω(group.IP).Should(Equal("10.10.10.10"))
+				Ω(group.Services).Should(HaveLen(1))
+				service := group.Services[0]
 
-					// Method call assertions.
-					g.Assert(service.Name).Equal("db-server")
-					g.Assert(service.IP).Equal("10.10.10.10")
-					g.Assert(service.Port).Equal(27017)
-				}).Return(nil)
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+				Ω(service.ID).Should(Equal("db_server_2c033893-7993-11e5-8878-56847afe9799:27017"))
+				Ω(service.Name).Should(Equal("db-server"))
+				Ω(service.ExposedPort).Should(Equal(31045))
+			}).Return(nil).Times(1)
+			registryAdapter.EXPECT().Deregister(gomock.Any()).Times(0)
 
-				// Act.
-				bridge.Sync()
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-				// Assert.
-				schedulerAdapter.AssertExpectations(t)
-				registryAdapter.AssertExpectations(t)
-				registryAdapter.AssertNotCalled(t, "Deregister")
-			})
+			// Act.
+			bridge.Sync()
+		})
 
-			g.It("Should register 2 services absent from registry but present in scheduler", func() {
-				// Arrange.
-				schedulerServices := []*types.Service{
-					&types.Service{
-						Name: "db-server",
-						IP:   "10.10.10.10",
-						Port: 27017,
+		It("Should register 2 services absent from registry but present in scheduler", func() {
+			// Arrange.
+			schedulerServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+							Name:         "db-server",
+							OriginalPort: 27017,
+							ExposedPort:  31045,
+						},
 					},
-					&types.Service{
-						Name: "app-server",
-						IP:   "10.10.10.10",
-						Port: 3000,
+				},
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:         "app-server",
+							OriginalPort: 3000,
+							ExposedPort:  31046,
+						},
 					},
+				},
+			}
+			registryServices := []*types.ServiceGroup{}
+			schedulerAdapter.EXPECT().Services().Return(schedulerServices, nil)
+			registryAdapter.EXPECT().Services().Return(registryServices, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
+			registryAdapter.EXPECT().Register(gomock.Any()).Do(func(group *types.ServiceGroup) {
+				Ω(group.IP).Should(Equal("10.10.10.10"))
+				Ω(group.Services).Should(HaveLen(1))
+				service := group.Services[0]
+
+				if service.Name == "db-server" {
+					Ω(service.ExposedPort).Should(Equal(31045))
+				} else if service.Name == "app-server" {
+					Ω(service.ExposedPort).Should(Equal(31046))
+				} else {
+					Fail("Tried to register an unknown service: " + service.Name)
 				}
-				registryServices := []*types.Service{}
-				schedulerAdapter.On("Services").Return(schedulerServices, nil)
-				registryAdapter.On("Services").Return(registryServices, nil)
-				registryAdapter.On("AdvertiseAddr").Return("10.10.10.10", nil)
-				registryAdapter.On("Register", mock.AnythingOfType("*types.Service")).Run(func(args mock.Arguments) {
-					service := args.Get(0).(*types.Service)
+			}).Return(nil).Times(2)
+			registryAdapter.EXPECT().Deregister(gomock.Any()).Times(0)
 
-					// Method call assertions.
-					if service.Name == "db-server" {
-						g.Assert(service.IP).Equal("10.10.10.10")
-						g.Assert(service.Port).Equal(27017)
-					} else if service.Name == "app-server" {
-						g.Assert(service.IP).Equal("10.10.10.10")
-						g.Assert(service.Port).Equal(3000)
-					} else {
-						g.Fail("Tried to register an unknown service: " + service.Name)
-					}
-				}).Return(nil).Twice()
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-				// Act.
-				bridge.Sync()
+			// Act.
+			bridge.Sync()
+		})
 
-				// Assert.
-				schedulerAdapter.AssertExpectations(t)
-				registryAdapter.AssertExpectations(t)
-				registryAdapter.AssertNotCalled(t, "Deregister")
-			})
-
-			g.It("Should not try to register services from address different than registry advertized one", func() {
-				// Arrange.
-				schedulerServices := []*types.Service{
-					&types.Service{
-						Name: "db-server",
-						IP:   "10.10.10.10",
-						Port: 27017,
+		It("Should not try to register services from address different than registry advertized one", func() {
+			// Arrange.
+			schedulerServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+							Name:         "db-server",
+							OriginalPort: 27017,
+							ExposedPort:  31045,
+						},
 					},
-					&types.Service{
-						Name: "app-server",
-						IP:   "10.10.10.20",
-						Port: 3000,
+				},
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.20",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:         "app-server",
+							OriginalPort: 3000,
+							ExposedPort:  31046,
+						},
 					},
-				}
-				registryServices := []*types.Service{}
-				schedulerAdapter.On("Services").Return(schedulerServices, nil)
-				registryAdapter.On("Services").Return(registryServices, nil)
-				registryAdapter.On("AdvertiseAddr").Return("10.10.10.10", nil)
-				registryAdapter.On("Register", mock.AnythingOfType("*types.Service")).Run(func(args mock.Arguments) {
-					service := args.Get(0).(*types.Service)
+				},
+			}
+			registryServices := []*types.ServiceGroup{}
+			schedulerAdapter.EXPECT().Services().Return(schedulerServices, nil)
+			registryAdapter.EXPECT().Services().Return(registryServices, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
+			registryAdapter.EXPECT().Register(gomock.Any()).Do(func(group *types.ServiceGroup) {
+				Ω(group.IP).Should(Equal("10.10.10.10"))
+				Ω(group.Services).Should(HaveLen(1))
+				service := group.Services[0]
 
-					// Method call assertions.
-					g.Assert(service.Name).Equal("db-server")
-					g.Assert(service.IP).Equal("10.10.10.10")
-					g.Assert(service.Port).Equal(27017)
-				}).Return(nil).Once()
-				bridge := &Bridge{
-					scheduler: schedulerAdapter,
-					registry:  registryAdapter,
-				}
+				// Method call assertions.
+				Ω(service.Name).Should(Equal("db-server"))
+				Ω(service.ExposedPort).Should(Equal(31045))
+			}).Return(nil).Times(1)
+			registryAdapter.EXPECT().Deregister(gomock.Any()).Times(0)
 
-				// Act.
-				bridge.Sync()
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
 
-				// Assert.
-				schedulerAdapter.AssertExpectations(t)
-				registryAdapter.AssertExpectations(t)
-				registryAdapter.AssertNotCalled(t, "Deregister")
-			})
+			// Act.
+			bridge.Sync()
 		})
 	})
-}
+})

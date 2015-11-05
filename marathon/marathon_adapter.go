@@ -1,14 +1,16 @@
 package marathon
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/x-cray/marathon-service-registrator/types"
 
+	"errors"
 	log "github.com/Sirupsen/logrus"
-	marathonClient "github.com/x-cray/go-marathon"
+	marathonClient "github.com/gambol99/go-marathon"
 )
 
 var (
@@ -24,12 +26,12 @@ var (
 	}
 )
 
-type MarathonAdapter struct {
+type marathonAdapter struct {
 	client   MarathonClient
 	resolver AddressResolver
 }
 
-func New(marathonURL string) (*MarathonAdapter, error) {
+func New(marathonURL string) (*marathonAdapter, error) {
 	config := marathonClient.NewDefaultConfig()
 	config.URL = marathonURL
 	config.RequestTimeout = 60 // 60 seconds
@@ -41,13 +43,13 @@ func New(marathonURL string) (*MarathonAdapter, error) {
 		return nil, err
 	}
 
-	return &MarathonAdapter{
+	return &marathonAdapter{
 		client:   client,
 		resolver: &defaultAddressResolver{},
 	}, nil
 }
 
-func (m *MarathonAdapter) ListenForEvents(channel types.EventsChannel) error {
+func (m *marathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	update := make(marathonClient.EventsChannel, 5)
 	if err := m.client.AddEventsListener(update, marathonClient.EVENTS_APPLICATIONS|marathonClient.EVENT_FRAMEWORK_MESSAGE); err != nil {
 		return err
@@ -64,43 +66,7 @@ func (m *MarathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	return nil
 }
 
-func mapDefault(m map[string]string, key, default_ string) string {
-	v, ok := m[key]
-	if !ok || v == "" {
-		return default_
-	}
-	return v
-}
-
-func extractServiceMetadata(source, destination map[string]string, port string) {
-	for k, v := range source {
-		if !strings.HasPrefix(k, "SERVICE_") {
-			continue
-		}
-
-		key := strings.ToLower(strings.TrimPrefix(k, "SERVICE_"))
-		portkey := strings.SplitN(key, "_", 2)
-		_, err := strconv.Atoi(portkey[0])
-		if err == nil && len(portkey) > 1 {
-			if portkey[0] != port {
-				continue
-			}
-			destination[portkey[1]] = v
-		} else {
-			destination[key] = v
-		}
-	}
-}
-
-func serviceMetadata(application *marathonClient.Application, port int) map[string]string {
-	result := make(map[string]string)
-	stringPort := string(port)
-	extractServiceMetadata(application.Env, result, stringPort)
-	extractServiceMetadata(application.Labels, result, stringPort)
-	return result
-}
-
-func (m *MarathonAdapter) toServiceEvent(marathonEvent *marathonClient.Event) (result *types.ServiceEvent) {
+func (m *marathonAdapter) toServiceEvent(marathonEvent *marathonClient.Event) (result *types.ServiceEvent) {
 	// Instantiate result object.
 	result = &types.ServiceEvent{
 		OriginalEvent: marathonEvent.Event,
@@ -141,24 +107,104 @@ func (m *MarathonAdapter) toServiceEvent(marathonEvent *marathonClient.Event) (r
 	return
 }
 
-func (m *MarathonAdapter) toService(task *marathonClient.Task, port int, isgroup bool, app *marathonClient.Application) (*types.Service, error) {
+func mapDefault(dict map[string]string, key, defaultValue string) string {
+	v, ok := dict[key]
+	if !ok || v == "" {
+		return defaultValue
+	}
+	return v
+}
+
+func extractServiceMetadata(source, destination map[string]string, port string) {
+	for k, v := range source {
+		if !strings.HasPrefix(k, "SERVICE_") {
+			continue
+		}
+
+		key := strings.ToLower(strings.TrimPrefix(k, "SERVICE_"))
+		portKey := strings.SplitN(key, "_", 2)
+		_, err := strconv.Atoi(portKey[0])
+		if err == nil && len(portKey) > 1 {
+			if portKey[0] != port {
+				continue
+			}
+			destination[portKey[1]] = v
+		} else {
+			destination[key] = v
+		}
+	}
+}
+
+func serviceMetadata(application *marathonClient.Application, port int) map[string]string {
+	result := make(map[string]string)
+	stringPort := strconv.Itoa(port)
+	extractServiceMetadata(application.Env, result, stringPort)
+	extractServiceMetadata(application.Labels, result, stringPort)
+	return result
+}
+
+func parseTags(tagString string) []string {
+	var tags []string
+	if tagString != "" {
+		tags = append(tags, strings.Split(tagString, ",")...)
+	}
+	return tags
+}
+
+func originalPorts(app *marathonClient.Application) []int {
+	if app.Container != nil && app.Container.Docker != nil {
+		var res []int
+		for _, portMapping := range app.Container.Docker.PortMappings {
+			res = append(res, portMapping.ContainerPort)
+		}
+		return res
+	}
+
+	return app.Ports
+}
+
+func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *marathonClient.Application) (*types.ServiceGroup, error) {
 	taskIP, err := m.resolver.Resolve(task.Host)
 	if err != nil {
 		return nil, err
 	}
 
+	originalPorts := originalPorts(app)
+	if len(task.Ports) != len(originalPorts) {
+		return nil, errors.New("Task original and exposed ports count mismatch")
+	}
+
 	idTokens := strings.Split(app.ID, "/")
 	defaultName := idTokens[len(idTokens)-1]
+	isgroup := len(task.Ports) > 1
+	services := make([]*types.Service, len(task.Ports))
+	serviceGroup := &types.ServiceGroup{
+		ID:       task.ID,
+		IP:       taskIP,
+		Services: services,
+	}
 
-	return &types.Service{
-		ID:   task.ID,
-		Name: defaultName,
-		IP:   taskIP,
-		Port: port,
-	}, nil
+	for i, exposedPort := range task.Ports {
+		originalPort := originalPorts[i]
+		name := defaultName
+		if isgroup {
+			name += fmt.Sprintf("-%d", originalPort)
+		}
+		metadata := serviceMetadata(app, originalPort)
+		service := &types.Service{
+			ID:           fmt.Sprintf("%s:%d", serviceGroup.ID, originalPort),
+			Name:         mapDefault(metadata, "name", name),
+			Tags:         parseTags(mapDefault(metadata, "tags", "")),
+			OriginalPort: originalPort,
+			ExposedPort:  exposedPort,
+		}
+		services[i] = service
+	}
+
+	return serviceGroup, nil
 }
 
-func (m *MarathonAdapter) Services() ([]*types.Service, error) {
+func (m *marathonAdapter) Services() ([]*types.ServiceGroup, error) {
 	params := make(url.Values)
 	params.Add("embed", "apps.tasks")
 	applications, err := m.client.Applications(params)
@@ -166,23 +212,23 @@ func (m *MarathonAdapter) Services() ([]*types.Service, error) {
 		return nil, err
 	}
 
-	result := make([]*types.Service, 0)
+	var result []*types.ServiceGroup
 	for _, app := range applications.Apps {
 		for _, task := range app.Tasks {
-			for _, port := range task.Ports {
-				service, err := m.toService(task, port, len(task.Ports) > 1, &app)
-				if err != nil {
-					return nil, err
-				}
+			group, err := m.toServiceGroup(task, &app)
+			if err != nil {
+				return nil, err
+			}
 
+			result = append(result, group)
+			for _, service := range group.Services {
 				log.WithFields(log.Fields{
 					"prefix": "marathon",
+					"ip":     group.IP,
 					"id":     service.ID,
 					"name":   service.Name,
-					"ip":     service.IP,
-					"port":   service.Port,
+					"port":   service.ExposedPort,
 				}).Debug("Service")
-				result = append(result, service)
 			}
 		}
 	}

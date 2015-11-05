@@ -7,32 +7,34 @@ import (
 )
 
 type SchedulerAdapter interface {
-	Services() ([]*Service, error)
+	Services() ([]*ServiceGroup, error)
 	ListenForEvents(channel EventsChannel) error
 }
 
 type RegistryAdapter interface {
-	Services() ([]*Service, error)
+	Services() ([]*ServiceGroup, error)
 	Ping() error
-	Register(service *Service) error
-	Deregister(service *Service) error
+	Register(group *ServiceGroup) error
+	Deregister(group *ServiceGroup) error
 	AdvertiseAddr() (string, error)
 }
 
+type ServiceGroup struct {
+	ID       string
+	IP       string
+	Services []*Service
+}
+
 type Service struct {
-	ID   string
-	Name string
-	Port int
-	IP   string
-	Tags []string
+	ID           string
+	Name         string
+	Tags         []string
+	OriginalPort int
+	ExposedPort  int
 }
 
-func (s *Service) String() string {
-	return fmt.Sprintf("service: %s, id: %s at %s:%d", s.Name, s.ID, s.IP, s.Port)
-}
-
-func (s *Service) MapKey() string {
-	return fmt.Sprintf("%s:%d", s.IP, s.Port)
+func (group *ServiceGroup) ServiceKey(service *Service) string {
+	return fmt.Sprintf("%s:%d", group.IP, service.ExposedPort)
 }
 
 type ServiceAction int

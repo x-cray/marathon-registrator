@@ -4,99 +4,281 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/x-cray/marathon-service-registrator/mocks"
 	"github.com/x-cray/marathon-service-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
-	. "github.com/franela/goblin"
-	"github.com/stretchr/testify/mock"
-	marathonClient "github.com/x-cray/go-marathon"
+	marathonClient "github.com/gambol99/go-marathon"
+	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func Test(t *testing.T) {
+func TestMarathonAdapter(t *testing.T) {
 	log.SetLevel(log.FatalLevel)
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Marathon Adapter Suite")
+}
 
-	g := Goblin(t)
-	g.Describe("MarathonAdapter", func() {
-		var client *mocks.MarathonClient
-		var resolver *mocks.AddressResolver
+var _ = Describe("MarathonAdapter", func() {
+	var (
+		mockCtrl *gomock.Controller
+		client   *MockMarathonClient
+		resolver *MockAddressResolver
+	)
 
-		applications := &marathonClient.Applications{
-			Apps: []marathonClient.Application{
-				marathonClient.Application{
-					ID: "/app/staging/web-app",
-					Env: map[string]string{
-						"SERVICE_TAGS":      "production",
-						"SERVICE_80_NAME":   "web-app-1",
-						"SERVICE_8080_NAME": "web-app-2",
+	singlePortApplications := &marathonClient.Applications{
+		Apps: []marathonClient.Application{
+			marathonClient.Application{
+				ID: "/app/staging/web-app",
+				Env: map[string]string{
+					"SERVICE_TAGS": "production",
+					"SERVICE_NAME": "web-app",
+				},
+				Ports: []int{80},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
+						AppID: "/app/staging/web-app",
+						Host:  "web.eu-west-1.internal",
+						Ports: []int{31045},
 					},
-					Ports: []int{
-						80,
-						8080,
+				},
+			},
+		},
+	}
+
+	singlePortApplicationsWithLabels := &marathonClient.Applications{
+		Apps: []marathonClient.Application{
+			marathonClient.Application{
+				ID: "/app/staging/web-app",
+				Env: map[string]string{
+					"SERVICE_TAGS": "production",
+					"SERVICE_NAME": "web-app",
+				},
+				Labels: map[string]string{
+					"SERVICE_TAGS": "production-labelled",
+					"SERVICE_NAME": "web-app-labelled",
+				},
+				Ports: []int{80},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
+						AppID: "/app/staging/web-app",
+						Host:  "web.eu-west-1.internal",
+						Ports: []int{31045},
 					},
-					Tasks: []*marathonClient.Task{
-						&marathonClient.Task{
-							ID:    "0000-web-app-12345098765",
-							AppID: "/app/staging/web-app",
-							Host:  "web.eu-west-1.internal",
-							Ports: []int{
-								31045,
-								31046,
-							},
+				},
+			},
+		},
+	}
+
+	multiPortSimpleApplications := &marathonClient.Applications{
+		Apps: []marathonClient.Application{
+			marathonClient.Application{
+				ID: "/app/staging/web-app",
+				Env: map[string]string{
+					"SERVICE_TAGS": "staging",
+				},
+				Ports: []int{
+					80,
+					8080,
+				},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
+						AppID: "/app/staging/web-app",
+						Host:  "web.eu-west-1.internal",
+						Ports: []int{
+							31045,
+							31046,
 						},
 					},
 				},
 			},
-		}
+		},
+	}
 
-		g.BeforeEach(func() {
-			client = &mocks.MarathonClient{}
-			resolver = &mocks.AddressResolver{}
+	multiPortComplexDockerApplications := &marathonClient.Applications{
+		Apps: []marathonClient.Application{
+			marathonClient.Application{
+				ID: "/app/staging/web-app",
+				Env: map[string]string{
+					"SERVICE_TAGS":      "production",
+					"SERVICE_80_NAME":   "web-app-1",
+					"SERVICE_8080_NAME": "web-app-2",
+				},
+				Container: &marathonClient.Container{
+					Docker: &marathonClient.Docker{
+						PortMappings: []*marathonClient.PortMapping{
+							&marathonClient.PortMapping{
+								ContainerPort: 80,
+							},
+							&marathonClient.PortMapping{
+								ContainerPort: 8080,
+							},
+						},
+					},
+				},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
+						AppID: "/app/staging/web-app",
+						Host:  "web.eu-west-1.internal",
+						Ports: []int{
+							31045,
+							31046,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		client = NewMockMarathonClient(mockCtrl)
+		resolver = NewMockAddressResolver(mockCtrl)
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	Describe("Services()", func() {
+		It("Should forward Marathon client errors", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(nil, errors.New("marathon-error"))
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+
+			// Act.
+			_, err := marathonAdapter.Services()
+
+			// Assert.
+			Ω(err).Should(HaveOccurred())
 		})
 
-		g.Describe("Services()", func() {
-			g.It("Should forward Marathon client errors", func() {
-				// Arrange.
-				client.On("Applications", mock.AnythingOfType("url.Values")).Return(nil, errors.New("marathon-error"))
-				marathonAdapter := &MarathonAdapter{client: client, resolver: resolver}
+		It("Should convert Marathon single-port application to service group with 1 service", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(singlePortApplications, nil)
+			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
 
-				// Act.
-				_, err := marathonAdapter.Services()
+			// Act.
+			services, err := marathonAdapter.Services()
 
-				// Assert.
-				client.AssertExpectations(t)
-				g.Assert(err.Error()).Equal("marathon-error")
-			})
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(services).Should(HaveLen(1))
+			Ω(services[0]).Should(Equal(&types.ServiceGroup{
+				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
+				IP: "10.10.10.20",
+				Services: []*types.Service{
+					&types.Service{
+						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
+						Name:         "web-app",
+						Tags:         []string{"production"},
+						OriginalPort: 80,
+						ExposedPort:  31045,
+					},
+				},
+			}))
+		})
 
-			g.It("Should convert Marathon applications list to services", func() {
-				// Arrange.
-				client.On("Applications", mock.AnythingOfType("url.Values")).Return(applications, nil)
-				resolver.On("Resolve", mock.AnythingOfType("string")).Return("127.0.0.1", nil)
-				marathonAdapter := &MarathonAdapter{client: client, resolver: resolver}
+		It("Should convert Marathon single-port application to service group with respect to labels over environment variables", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(singlePortApplicationsWithLabels, nil)
+			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
 
-				// Act.
-				services, err := marathonAdapter.Services()
+			// Act.
+			services, err := marathonAdapter.Services()
 
-				// Assert.
-				client.AssertExpectations(t)
-				resolver.AssertExpectations(t)
-				g.Assert(len(services)).Equal(2)
-				g.Assert(services[0]).Equal(&types.Service{
-					ID:   "0000-web-app-12345098765:31045",
-					Name: "web-app-80",
-					IP:   "127.0.0.1",
-					Port: 31045,
-					Tags: []string {"production"},
-				})
-				g.Assert(services[1]).Equal(&types.Service{
-					ID:   "0000-web-app-12345098765:31046",
-					Name: "web-app-8080",
-					IP:   "127.0.0.1",
-					Port: 31046,
-					Tags: []string {"production"},
-				})
-				g.Assert(err).Equal(nil)
-			})
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(services).Should(HaveLen(1))
+			Ω(services[0]).Should(Equal(&types.ServiceGroup{
+				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
+				IP: "10.10.10.20",
+				Services: []*types.Service{
+					&types.Service{
+						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
+						Name:         "web-app-labelled",
+						Tags:         []string{"production-labelled"},
+						OriginalPort: 80,
+						ExposedPort:  31045,
+					},
+				},
+			}))
+		})
+
+		It("Should convert Marathon multi-port application with simple config to service group with 2 services", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(multiPortSimpleApplications, nil)
+			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+
+			// Act.
+			services, err := marathonAdapter.Services()
+
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(services).Should(HaveLen(1))
+			Ω(services[0].Services).Should(HaveLen(2))
+			Ω(services[0]).Should(Equal(&types.ServiceGroup{
+				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
+				IP: "10.10.10.20",
+				Services: []*types.Service{
+					&types.Service{
+						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
+						Name:         "web-app-80",
+						Tags:         []string{"staging"},
+						OriginalPort: 80,
+						ExposedPort:  31045,
+					},
+					&types.Service{
+						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:8080",
+						Name:         "web-app-8080",
+						Tags:         []string{"staging"},
+						OriginalPort: 8080,
+						ExposedPort:  31046,
+					},
+				},
+			}))
+		})
+
+		It("Should convert Marathon multi-port dockerized application with complex config to service group with 2 services", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(multiPortComplexDockerApplications, nil)
+			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+
+			// Act.
+			services, err := marathonAdapter.Services()
+
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(services).Should(HaveLen(1))
+			Ω(services[0].Services).Should(HaveLen(2))
+			Ω(services[0]).Should(Equal(&types.ServiceGroup{
+				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
+				IP: "10.10.10.20",
+				Services: []*types.Service{
+					&types.Service{
+						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
+						Name:         "web-app-1",
+						Tags:         []string{"production"},
+						OriginalPort: 80,
+						ExposedPort:  31045,
+					},
+					&types.Service{
+						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:8080",
+						Name:         "web-app-2",
+						Tags:         []string{"production"},
+						OriginalPort: 8080,
+						ExposedPort:  31046,
+					},
+				},
+			}))
 		})
 	})
-}
+})

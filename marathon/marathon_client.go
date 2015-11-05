@@ -3,7 +3,7 @@ package marathon
 import (
 	"net/url"
 
-	marathonClient "github.com/x-cray/go-marathon"
+	marathonClient "github.com/gambol99/go-marathon"
 )
 
 type MarathonClient interface {

@@ -10,14 +10,19 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+type serviceGroupPair struct {
+	service *types.Service
+	group   *types.ServiceGroup
+}
+
 type Bridge struct {
 	sync.Mutex
 
-	scheduler             types.SchedulerAdapter
-	schedulerServices     map[string]*types.Service
-	registry              types.RegistryAdapter
-	registryAdvertizeAddr string
-	config                *types.Config
+	scheduler              types.SchedulerAdapter
+	schedulerServiceGroups map[string]*types.ServiceGroup
+	registry               types.RegistryAdapter
+	registryAdvertizeAddr  string
+	config                 *types.Config
 }
 
 func New(c *types.Config) (*Bridge, error) {
@@ -38,12 +43,17 @@ func New(c *types.Config) (*Bridge, error) {
 	}, nil
 }
 
-func (b *Bridge) cachedService(serviceID, actionText string) *types.Service {
-	if service, ok := b.schedulerServices[serviceID]; ok {
-		return service
+func (b *Bridge) cachedServiceGroup(groupID, actionText string) *types.ServiceGroup {
+	if group, ok := b.schedulerServiceGroups[groupID]; ok {
+		return group
 	}
 
-	log.WithField("prefix", "bridge").Warningf("Service %s was not found in scheduler cache (has %d entries). Could not %s.", serviceID, len(b.schedulerServices), actionText)
+	log.WithField("prefix", "bridge").Warningf(
+		"Service group %s was not found in scheduler cache (has %d entries). Could not %s.",
+		groupID,
+		len(b.schedulerServiceGroups),
+		actionText,
+	)
 	return nil
 }
 
@@ -69,31 +79,31 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 		// Service stopped, deregister and remove it from cache.
 		// Only consider services registered on current registry's advertized address.
 		if event.IP == b.registryAdvertizeAddr {
-			if service := b.cachedService(event.ServiceID, "deregister"); service != nil {
-				b.registry.Deregister(service)
-				delete(b.schedulerServices, event.ServiceID)
+			if group := b.cachedServiceGroup(event.ServiceID, "deregister"); group != nil {
+				b.registry.Deregister(group)
+				delete(b.schedulerServiceGroups, event.ServiceID)
 			}
 		} else {
 			logSkipMessage(event.IP)
 		}
 	case types.ServiceWentUp:
 		// Service went up, register it.
-		if service := b.cachedService(event.ServiceID, "register"); service != nil {
+		if group := b.cachedServiceGroup(event.ServiceID, "register"); group != nil {
 			// Only consider services registered on current registry's advertized address.
-			if service.IP == b.registryAdvertizeAddr {
-				b.registry.Register(service)
+			if group.IP == b.registryAdvertizeAddr {
+				b.registry.Register(group)
 			} else {
-				logSkipMessage(service.IP)
+				logSkipMessage(group.IP)
 			}
 		}
 	case types.ServiceWentDown:
 		// Service went down, deregister it.
-		if service := b.cachedService(event.ServiceID, "deregister"); service != nil {
+		if group := b.cachedServiceGroup(event.ServiceID, "deregister"); group != nil {
 			// Only consider services registered on current registry's advertized address.
-			if service.IP == b.registryAdvertizeAddr {
-				b.registry.Deregister(service)
+			if group.IP == b.registryAdvertizeAddr {
+				b.registry.Deregister(group)
 			} else {
-				logSkipMessage(service.IP)
+				logSkipMessage(group.IP)
 			}
 		}
 	}
@@ -133,17 +143,22 @@ func (b *Bridge) Sync() error {
 	actionsPerformed := false
 
 	// Get services from registry.
-	registryServices, err := b.registry.Services()
+	registryServiceGroups, err := b.registry.Services()
 	if err != nil {
 		return err
 	}
 
-	log.WithField("prefix", "bridge").Infof("Received %d services from registry", len(registryServices))
+	log.WithField("prefix", "bridge").Infof("Received %d services from registry", len(registryServiceGroups))
 
 	// Build ip:port-indexed service map.
-	registryServicesMap := make(map[string]*types.Service)
-	for _, service := range registryServices {
-		registryServicesMap[service.MapKey()] = service
+	registryServicesMap := make(map[string]*serviceGroupPair)
+	for _, group := range registryServiceGroups {
+		for _, service := range group.Services {
+			registryServicesMap[group.ServiceKey(service)] = &serviceGroupPair{
+				service: service,
+				group:   group,
+			}
+		}
 	}
 
 	schedulerServicesMap, err := b.refreshSchedulerServices()
@@ -153,10 +168,13 @@ func (b *Bridge) Sync() error {
 
 	// Register scheduler services absent in registry.
 	for _, schedulerService := range schedulerServicesMap {
+		group := schedulerService.group
+		service := schedulerService.service
+
 		// If service is not yet registered we need to register it.
 		// Only consider services registered on current registry's advertized address.
-		if schedulerService.IP == b.registryAdvertizeAddr && registryServicesMap[schedulerService.MapKey()] == nil {
-			err := b.registry.Register(schedulerService)
+		if group.IP == b.registryAdvertizeAddr && registryServicesMap[group.ServiceKey(service)] == nil {
+			err := b.registry.Register(group)
 			if err != nil {
 				return err
 			}
@@ -166,9 +184,12 @@ func (b *Bridge) Sync() error {
 
 	// Deregister dangling services (existing in registry and absent in scheduler).
 	for _, registryService := range registryServicesMap {
+		group := registryService.group
+		service := registryService.service
+
 		// If service is registered and we don't have it in scheduler we need to deregister it.
-		if schedulerServicesMap[registryService.MapKey()] == nil {
-			err := b.registry.Deregister(registryService)
+		if schedulerServicesMap[group.ServiceKey(service)] == nil {
+			err := b.registry.Deregister(group)
 			if err != nil {
 				return err
 			}
@@ -183,7 +204,7 @@ func (b *Bridge) Sync() error {
 	return nil
 }
 
-func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
+func (b *Bridge) refreshSchedulerServices() (map[string]*serviceGroupPair, error) {
 	log.WithField("prefix", "bridge").Info("Refreshing scheduler services")
 
 	// Get registry's advertize address.
@@ -195,7 +216,7 @@ func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
 	b.registryAdvertizeAddr = addr
 
 	// Get services from scheduler.
-	schedulerServicesArray, err := b.scheduler.Services()
+	schedulerServiceGroups, err := b.scheduler.Services()
 	if err != nil {
 		return nil, err
 	}
@@ -204,16 +225,21 @@ func (b *Bridge) refreshSchedulerServices() (map[string]*types.Service, error) {
 
 	// Build 2 maps of services:
 	// ServiceID-indexed and ip:port-indexed
-	ipPortServices := make(map[string]*types.Service)
-	b.schedulerServices = make(map[string]*types.Service)
-	for _, service := range schedulerServicesArray {
-		ipPortServices[service.MapKey()] = service
-		b.schedulerServices[service.ID] = service
+	ipPortServices := make(map[string]*serviceGroupPair)
+	b.schedulerServiceGroups = make(map[string]*types.ServiceGroup)
+	for _, group := range schedulerServiceGroups {
+		b.schedulerServiceGroups[group.ID] = group
+		for _, service := range group.Services {
+			ipPortServices[group.ServiceKey(service)] = &serviceGroupPair{
+				service: service,
+				group:   group,
+			}
+		}
 	}
 
 	log.WithField("prefix", "bridge").Infof(
 		"Received %d services from scheduler",
-		len(schedulerServicesArray),
+		len(schedulerServiceGroups),
 	)
 
 	return ipPortServices, nil
