@@ -26,11 +26,25 @@ var _ = Describe("MarathonAdapter", func() {
 		resolver *MockAddressResolver
 	)
 
+	inconsistentPortsApplications := &marathonClient.Applications{
+		Apps: []marathonClient.Application{
+			marathonClient.Application{
+				Ports: []int{80, 8080},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						Ports: []int{},
+					},
+				},
+			},
+		},
+	}
+
 	singlePortApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
 			marathonClient.Application{
 				ID: "/app/staging/web-app",
 				Env: map[string]string{
+					"NODE_ENV":     "production",
 					"SERVICE_TAGS": "production",
 					"SERVICE_NAME": "web-app",
 				},
@@ -148,6 +162,32 @@ var _ = Describe("MarathonAdapter", func() {
 		It("Should forward Marathon client errors", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(nil, errors.New("marathon-error"))
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+
+			// Act.
+			_, err := marathonAdapter.Services()
+
+			// Assert.
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("Should forward resolver errors", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(singlePortApplications, nil)
+			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("", errors.New("resolve-error"))
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+
+			// Act.
+			_, err := marathonAdapter.Services()
+
+			// Assert.
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("Should detect inconsistent ports in app definition", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(inconsistentPortsApplications, nil)
+			resolver.EXPECT().Resolve(gomock.Any()).Return("10.10.10.20", nil).AnyTimes()
 			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
 
 			// Act.
