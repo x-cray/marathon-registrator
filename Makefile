@@ -1,11 +1,10 @@
 NAME=marathon-service-registrator
 VERSION=$(shell cat VERSION)
-DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 
 deps:
-	@echo "--> Installing build dependencies"
-	@go get -d -v $(DEPS)
+	@echo "--> Installing dependencies"
+	@go get -d -v -t ./...
 
 test-deps:
 	@which ginkgo 2>/dev/null ; if [ $$? -eq 1 ]; then \
