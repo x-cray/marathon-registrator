@@ -214,7 +214,21 @@ func (m *marathonAdapter) Services() ([]*types.ServiceGroup, error) {
 
 	var result []*types.ServiceGroup
 	for _, app := range applications.Apps {
+	tasksLoop:
 		for _, task := range app.Tasks {
+			// Skip unhealthy instances.
+			// Tasks' health has not yet been checked.
+			if len(app.HealthChecks) != len(task.HealthCheckResult) {
+				continue tasksLoop
+			}
+
+			// Tasks' health is not ok.
+			for _, checkResult := range task.HealthCheckResult {
+				if !checkResult.Alive {
+					continue tasksLoop
+				}
+			}
+
 			group, err := m.toServiceGroup(task, &app)
 			if err != nil {
 				return nil, err

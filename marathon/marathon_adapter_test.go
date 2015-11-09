@@ -39,6 +39,63 @@ var _ = Describe("MarathonAdapter", func() {
 		},
 	}
 
+	unhealthyApplications := &marathonClient.Applications{
+		Apps: []marathonClient.Application{
+			// Healthy 1. No healthchecks.
+			marathonClient.Application{
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{},
+				},
+			},
+			// Healthy 2. Healthchecks are passing.
+			marathonClient.Application{
+				HealthChecks: []*marathonClient.HealthCheck {
+					&marathonClient.HealthCheck{},
+				},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						HealthCheckResult: []*marathonClient.HealthCheckResult {
+							&marathonClient.HealthCheckResult{
+								Alive: true,
+							},
+						},
+					},
+				},
+			},
+			// Unhealthy 1. Healthchecks are not passing.
+			marathonClient.Application{
+				HealthChecks: []*marathonClient.HealthCheck {
+					&marathonClient.HealthCheck{},
+				},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						HealthCheckResult: []*marathonClient.HealthCheckResult {
+							&marathonClient.HealthCheckResult{
+								Alive: false,
+							},
+						},
+					},
+				},
+			},
+			// Unhealthy 2. Healthchecks either are not passing or missing healthcheck results.
+			marathonClient.Application{
+				HealthChecks: []*marathonClient.HealthCheck {
+					&marathonClient.HealthCheck{},
+				},
+				Tasks: []*marathonClient.Task{
+					&marathonClient.Task{
+						HealthCheckResult: []*marathonClient.HealthCheckResult {
+							&marathonClient.HealthCheckResult{
+								Alive: false,
+							},
+						},
+					},
+					&marathonClient.Task{},
+				},
+			},
+		},
+	}
+
 	singlePortApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
 			marathonClient.Application{
@@ -195,6 +252,20 @@ var _ = Describe("MarathonAdapter", func() {
 
 			// Assert.
 			Ω(err).Should(HaveOccurred())
+		})
+
+		It("Should not add unhealthy instances to result", func() {
+			// Arrange.
+			client.EXPECT().Applications(gomock.Any()).Return(unhealthyApplications, nil)
+			resolver.EXPECT().Resolve(gomock.Any()).Return("10.10.10.20", nil).AnyTimes()
+			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+
+			// Act.
+			services, err := marathonAdapter.Services()
+
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(services).Should(HaveLen(2))
 		})
 
 		It("Should convert Marathon single-port application to service group with 1 service", func() {
