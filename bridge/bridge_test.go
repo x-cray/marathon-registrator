@@ -344,4 +344,39 @@ var _ = Describe("Bridge", func() {
 			bridge.Sync()
 		})
 	})
+
+	Describe("ProcessSchedulerEvents()", func() {
+		It("Should forward errors received from SchedulerAdapter.ListenForEvents()", func() {
+			// Arrange.
+			schedulerAdapter.EXPECT().ListenForEvents(gomock.Any()).Return(errors.New("scheduler-error"))
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
+
+			// Act.
+			err := bridge.ProcessSchedulerEvents()
+
+			// Assert.
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("Should refresh service lists on ServiceStarted event", func() {
+//			// Arrange.
+//			var bridgeChannel types.EventsChannel
+//			schedulerAdapter.EXPECT().ListenForEvents(gomock.Any()).Do(func(channel types.EventsChannel) {
+//				bridgeChannel = channel
+//			}).Return(nil)
+//			bridge := &Bridge{
+//				scheduler: schedulerAdapter,
+//				registry:  registryAdapter,
+//			}
+//
+//			// Act.
+//			go bridge.ProcessSchedulerEvents()
+//			bridgeChannel <- &types.ServiceEvent{}
+//
+//			// Assert.
+		})
+	})
 })
