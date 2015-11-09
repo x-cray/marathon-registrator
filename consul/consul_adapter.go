@@ -51,6 +51,7 @@ func (r *consulAdapter) Register(group *types.ServiceGroup) error {
 			log.WithFields(log.Fields{
 				"prefix": "consul",
 				"ip":     group.IP,
+				"id":     service.ID,
 				"name":   service.Name,
 				"port":   service.ExposedPort,
 			}).Info("[dry-run] Would register service")
@@ -60,6 +61,7 @@ func (r *consulAdapter) Register(group *types.ServiceGroup) error {
 		log.WithFields(log.Fields{
 			"prefix": "consul",
 			"ip":     group.IP,
+			"id":     service.ID,
 			"name":   service.Name,
 			"port":   service.ExposedPort,
 		}).Info("Registering service")
