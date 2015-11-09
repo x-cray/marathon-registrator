@@ -166,7 +166,7 @@ func (b *Bridge) Sync() error {
 		return err
 	}
 
-	// Register scheduler services absent in registry.
+	// Register scheduler services absent from registry.
 	for _, schedulerService := range schedulerServicesMap {
 		group := schedulerService.group
 		service := schedulerService.service
@@ -182,7 +182,7 @@ func (b *Bridge) Sync() error {
 		}
 	}
 
-	// Deregister dangling services (existing in registry and absent in scheduler).
+	// Deregister dangling services (existing in registry but absent from scheduler).
 	for _, registryService := range registryServicesMap {
 		group := registryService.group
 		service := registryService.service
