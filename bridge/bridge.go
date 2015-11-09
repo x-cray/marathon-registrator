@@ -172,8 +172,8 @@ func (b *Bridge) Sync() error {
 		service := schedulerService.service
 
 		// If service is not yet registered we need to register it.
-		// Only consider services registered on current registry's advertized address.
-		if group.IP == b.registryAdvertizeAddr && registryServicesMap[group.ServiceKey(service)] == nil {
+		// Only consider healthy services registered on current registry's advertized address.
+		if group.IP == b.registryAdvertizeAddr && service.Healthy && registryServicesMap[group.ServiceKey(service)] == nil {
 			err := b.registry.Register(group)
 			if err != nil {
 				return err

@@ -29,6 +29,7 @@ type Service struct {
 	ID           string
 	Name         string
 	Tags         []string
+	Healthy      bool
 	OriginalPort int
 	ExposedPort  int
 }

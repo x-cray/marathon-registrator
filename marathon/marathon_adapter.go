@@ -163,6 +163,22 @@ func originalPorts(app *marathonClient.Application) []int {
 	return app.Ports
 }
 
+func isHealthy(task *marathonClient.Task, app *marathonClient.Application) bool {
+	// Tasks' health has not yet been checked.
+	if len(app.HealthChecks) != len(task.HealthCheckResult) {
+		return false
+	}
+
+	// Tasks' health is not ok.
+	for _, checkResult := range task.HealthCheckResult {
+		if !checkResult.Alive {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *marathonClient.Application) (*types.ServiceGroup, error) {
 	taskIP, err := m.resolver.Resolve(task.Host)
 	if err != nil {
@@ -195,6 +211,7 @@ func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *maratho
 			ID:           fmt.Sprintf("%s:%d", serviceGroup.ID, originalPort),
 			Name:         mapDefault(metadata, "name", name),
 			Tags:         parseTags(mapDefault(metadata, "tags", "")),
+			Healthy:      isHealthy(task, app),
 			OriginalPort: originalPort,
 			ExposedPort:  exposedPort,
 		}
@@ -214,21 +231,7 @@ func (m *marathonAdapter) Services() ([]*types.ServiceGroup, error) {
 
 	var result []*types.ServiceGroup
 	for _, app := range applications.Apps {
-	tasksLoop:
 		for _, task := range app.Tasks {
-			// Skip unhealthy instances.
-			// Tasks' health has not yet been checked.
-			if len(app.HealthChecks) != len(task.HealthCheckResult) {
-				continue tasksLoop
-			}
-
-			// Tasks' health is not ok.
-			for _, checkResult := range task.HealthCheckResult {
-				if !checkResult.Alive {
-					continue tasksLoop
-				}
-			}
-
 			group, err := m.toServiceGroup(task, &app)
 			if err != nil {
 				return nil, err

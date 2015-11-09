@@ -43,17 +43,22 @@ var _ = Describe("MarathonAdapter", func() {
 		Apps: []marathonClient.Application{
 			// Healthy 1. No healthchecks.
 			marathonClient.Application{
+				Ports: []int{3000},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{},
+					&marathonClient.Task{
+						Ports: []int{3000},
+					},
 				},
 			},
 			// Healthy 2. Healthchecks are passing.
 			marathonClient.Application{
+				Ports: []int{3000},
 				HealthChecks: []*marathonClient.HealthCheck {
 					&marathonClient.HealthCheck{},
 				},
 				Tasks: []*marathonClient.Task{
 					&marathonClient.Task{
+						Ports: []int{3000},
 						HealthCheckResult: []*marathonClient.HealthCheckResult {
 							&marathonClient.HealthCheckResult{
 								Alive: true,
@@ -64,11 +69,13 @@ var _ = Describe("MarathonAdapter", func() {
 			},
 			// Unhealthy 1. Healthchecks are not passing.
 			marathonClient.Application{
+				Ports: []int{3000},
 				HealthChecks: []*marathonClient.HealthCheck {
 					&marathonClient.HealthCheck{},
 				},
 				Tasks: []*marathonClient.Task{
 					&marathonClient.Task{
+						Ports: []int{3000},
 						HealthCheckResult: []*marathonClient.HealthCheckResult {
 							&marathonClient.HealthCheckResult{
 								Alive: false,
@@ -77,20 +84,24 @@ var _ = Describe("MarathonAdapter", func() {
 					},
 				},
 			},
-			// Unhealthy 2. Healthchecks either are not passing or missing healthcheck results.
+			// Unhealthy 2. Healthchecks are either not passing or missing healthcheck results.
 			marathonClient.Application{
+				Ports: []int{3000},
 				HealthChecks: []*marathonClient.HealthCheck {
 					&marathonClient.HealthCheck{},
 				},
 				Tasks: []*marathonClient.Task{
 					&marathonClient.Task{
+						Ports: []int{3000},
 						HealthCheckResult: []*marathonClient.HealthCheckResult {
 							&marathonClient.HealthCheckResult{
 								Alive: false,
 							},
 						},
 					},
-					&marathonClient.Task{},
+					&marathonClient.Task{
+						Ports: []int{3000},
+					},
 				},
 			},
 		},
@@ -254,7 +265,7 @@ var _ = Describe("MarathonAdapter", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("Should not add unhealthy instances to result", func() {
+		It("Should correctly handle instance health status", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(unhealthyApplications, nil)
 			resolver.EXPECT().Resolve(gomock.Any()).Return("10.10.10.20", nil).AnyTimes()
@@ -265,7 +276,17 @@ var _ = Describe("MarathonAdapter", func() {
 
 			// Assert.
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(services).Should(HaveLen(2))
+			Ω(services).Should(HaveLen(5))
+			Ω(services[0].Services).Should(HaveLen(1))
+			Ω(services[0].Services[0].Healthy).Should(BeTrue())
+			Ω(services[1].Services).Should(HaveLen(1))
+			Ω(services[1].Services[0].Healthy).Should(BeTrue())
+			Ω(services[2].Services).Should(HaveLen(1))
+			Ω(services[2].Services[0].Healthy).Should(BeFalse())
+			Ω(services[3].Services).Should(HaveLen(1))
+			Ω(services[3].Services[0].Healthy).Should(BeFalse())
+			Ω(services[4].Services).Should(HaveLen(1))
+			Ω(services[4].Services[0].Healthy).Should(BeFalse())
 		})
 
 		It("Should convert Marathon single-port application to service group with 1 service", func() {
@@ -288,6 +309,7 @@ var _ = Describe("MarathonAdapter", func() {
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app",
 						Tags:         []string{"production"},
+						Healthy:      true,
 						OriginalPort: 80,
 						ExposedPort:  31045,
 					},
@@ -315,6 +337,7 @@ var _ = Describe("MarathonAdapter", func() {
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app-labelled",
 						Tags:         []string{"production-labelled"},
+						Healthy:      true,
 						OriginalPort: 80,
 						ExposedPort:  31045,
 					},
@@ -343,6 +366,7 @@ var _ = Describe("MarathonAdapter", func() {
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app-80",
 						Tags:         []string{"staging"},
+						Healthy:      true,
 						OriginalPort: 80,
 						ExposedPort:  31045,
 					},
@@ -350,6 +374,7 @@ var _ = Describe("MarathonAdapter", func() {
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:8080",
 						Name:         "web-app-8080",
 						Tags:         []string{"staging"},
+						Healthy:      true,
 						OriginalPort: 8080,
 						ExposedPort:  31046,
 					},
@@ -378,6 +403,7 @@ var _ = Describe("MarathonAdapter", func() {
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app-1",
 						Tags:         []string{"production"},
+						Healthy:      true,
 						OriginalPort: 80,
 						ExposedPort:  31045,
 					},
@@ -385,6 +411,7 @@ var _ = Describe("MarathonAdapter", func() {
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:8080",
 						Name:         "web-app-2",
 						Tags:         []string{"production"},
+						Healthy:      true,
 						OriginalPort: 8080,
 						ExposedPort:  31046,
 					},
