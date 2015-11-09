@@ -57,6 +57,13 @@ func (r *consulAdapter) Register(group *types.ServiceGroup) error {
 			continue
 		}
 
+		log.WithFields(log.Fields{
+			"prefix": "consul",
+			"ip":     group.IP,
+			"name":   service.Name,
+			"port":   service.ExposedPort,
+		}).Info("Registering service")
+
 		registration := new(consulAPI.AgentServiceRegistration)
 		registration.Address = group.IP
 		registration.ID = service.ID
@@ -85,6 +92,14 @@ func (r *consulAdapter) Deregister(group *types.ServiceGroup) error {
 			}).Info("[dry-run] Would deregister service")
 			continue
 		}
+
+		log.WithFields(log.Fields{
+			"prefix": "consul",
+			"ip":     group.IP,
+			"id":     service.ID,
+			"name":   service.Name,
+			"port":   service.ExposedPort,
+		}).Info("Deregistering service")
 
 		err := r.client.Agent().ServiceDeregister(service.ID)
 		if err != nil {
