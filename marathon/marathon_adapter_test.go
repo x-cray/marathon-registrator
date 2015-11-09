@@ -53,13 +53,13 @@ var _ = Describe("MarathonAdapter", func() {
 			// Healthy 2. Healthchecks are passing.
 			marathonClient.Application{
 				Ports: []int{3000},
-				HealthChecks: []*marathonClient.HealthCheck {
+				HealthChecks: []*marathonClient.HealthCheck{
 					&marathonClient.HealthCheck{},
 				},
 				Tasks: []*marathonClient.Task{
 					&marathonClient.Task{
 						Ports: []int{3000},
-						HealthCheckResult: []*marathonClient.HealthCheckResult {
+						HealthCheckResult: []*marathonClient.HealthCheckResult{
 							&marathonClient.HealthCheckResult{
 								Alive: true,
 							},
@@ -70,13 +70,13 @@ var _ = Describe("MarathonAdapter", func() {
 			// Unhealthy 1. Healthchecks are not passing.
 			marathonClient.Application{
 				Ports: []int{3000},
-				HealthChecks: []*marathonClient.HealthCheck {
+				HealthChecks: []*marathonClient.HealthCheck{
 					&marathonClient.HealthCheck{},
 				},
 				Tasks: []*marathonClient.Task{
 					&marathonClient.Task{
 						Ports: []int{3000},
-						HealthCheckResult: []*marathonClient.HealthCheckResult {
+						HealthCheckResult: []*marathonClient.HealthCheckResult{
 							&marathonClient.HealthCheckResult{
 								Alive: false,
 							},
@@ -87,13 +87,13 @@ var _ = Describe("MarathonAdapter", func() {
 			// Unhealthy 2. Healthchecks are either not passing or missing healthcheck results.
 			marathonClient.Application{
 				Ports: []int{3000},
-				HealthChecks: []*marathonClient.HealthCheck {
+				HealthChecks: []*marathonClient.HealthCheck{
 					&marathonClient.HealthCheck{},
 				},
 				Tasks: []*marathonClient.Task{
 					&marathonClient.Task{
 						Ports: []int{3000},
-						HealthCheckResult: []*marathonClient.HealthCheckResult {
+						HealthCheckResult: []*marathonClient.HealthCheckResult{
 							&marathonClient.HealthCheckResult{
 								Alive: false,
 							},

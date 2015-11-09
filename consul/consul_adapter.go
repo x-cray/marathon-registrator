@@ -148,8 +148,8 @@ func (r *consulAdapter) Services() ([]*types.ServiceGroup, error) {
 	i := 0
 	for _, v := range services {
 		group := &types.ServiceGroup{
-			ID:   groupID(v.ID),
-			IP:   v.Address,
+			ID: groupID(v.ID),
+			IP: v.Address,
 			Services: []*types.Service{
 				&types.Service{
 					ID:          v.ID,
