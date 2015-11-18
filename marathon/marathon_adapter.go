@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/x-cray/marathon-service-registrator/types"
+	"github.com/x-cray/marathon-registrator/types"
 
 	"errors"
 	log "github.com/Sirupsen/logrus"

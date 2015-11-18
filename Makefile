@@ -1,4 +1,4 @@
-NAME=marathon-service-registrator
+NAME=marathon-registrator
 VERSION=$(shell cat VERSION)
 PACKAGES=$(shell go list ./...)
 

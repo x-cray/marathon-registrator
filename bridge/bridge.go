@@ -3,9 +3,9 @@ package bridge
 import (
 	"sync"
 
-	"github.com/x-cray/marathon-service-registrator/consul"
-	"github.com/x-cray/marathon-service-registrator/marathon"
-	"github.com/x-cray/marathon-service-registrator/types"
+	"github.com/x-cray/marathon-registrator/consul"
+	"github.com/x-cray/marathon-registrator/marathon"
+	"github.com/x-cray/marathon-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
 )

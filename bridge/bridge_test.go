@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/x-cray/marathon-service-registrator/types"
+	"github.com/x-cray/marathon-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/golang/mock/gomock"

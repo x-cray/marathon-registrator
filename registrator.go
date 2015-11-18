@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/x-cray/marathon-service-registrator/bridge"
-	"github.com/x-cray/marathon-service-registrator/types"
+	"github.com/x-cray/marathon-registrator/bridge"
+	"github.com/x-cray/marathon-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
 	logrusSyslog "github.com/Sirupsen/logrus/hooks/syslog"

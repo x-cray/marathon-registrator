@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/x-cray/marathon-service-registrator/types"
+	"github.com/x-cray/marathon-registrator/types"
 
 	log "github.com/Sirupsen/logrus"
 	consulAPI "github.com/hashicorp/consul/api"
