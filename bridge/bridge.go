@@ -96,16 +96,6 @@ func (b *Bridge) processServiceEvent(event *types.ServiceEvent) error {
 				logSkipMessage(group.IP)
 			}
 		}
-	case types.ServiceWentDown:
-		// Service went down, deregister it.
-		if group := b.cachedServiceGroup(event.ServiceID, "deregister"); group != nil {
-			// Only consider services registered on current registry's advertized address.
-			if group.IP == b.registryAdvertizeAddr {
-				b.registry.Deregister(group)
-			} else {
-				logSkipMessage(group.IP)
-			}
-		}
 	}
 
 	return nil
@@ -132,7 +122,10 @@ func (b *Bridge) ProcessSchedulerEvents() error {
 				"action":  event.Action,
 				"event":   event.OriginalEvent,
 			}).Debug("Received scheduler event")
-			b.processServiceEvent(event)
+			err := b.processServiceEvent(event)
+			if err != nil {
+				log.WithField("prefix", "bridge").Errorf("Failed to process scheduler event: %v", err)
+			}
 		}
 	}
 

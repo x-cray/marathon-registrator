@@ -75,7 +75,7 @@ func (m *marathonAdapter) toServiceEvent(marathonEvent *marathonClient.Event) (r
 
 	// Task status update event suggests that Marathon cached services list
 	// should be updated:
-	// - when ServiceStopped we need to remove service from cache
+	// - when ServiceStopped we need to remove service from cache and deregister it
 	// - when ServiceStarted we need to repopulate cache with fresh Marathon services
 	statusUpdateEvent, ok := marathonEvent.Event.(*marathonClient.EventStatusUpdate)
 	if ok {

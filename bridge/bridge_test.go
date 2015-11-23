@@ -466,22 +466,47 @@ var _ = Describe("Bridge", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
+		It("Should process event and exit on scheduler channel closure", func() {
+			// Arrange.
+			schedulerAdapter.EXPECT().ListenForEvents(gomock.Any()).Do(func(channel types.EventsChannel) {
+				channel <- &types.ServiceEvent{}
+				close(channel)
+			}).Return(nil)
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
+
+			// Act.
+			err := bridge.ProcessSchedulerEvents()
+
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
 		It("Should refresh service lists on ServiceStarted event", func() {
-			//			// Arrange.
-			//			var bridgeChannel types.EventsChannel
-			//			schedulerAdapter.EXPECT().ListenForEvents(gomock.Any()).Do(func(channel types.EventsChannel) {
-			//				bridgeChannel = channel
-			//			}).Return(nil)
-			//			bridge := &Bridge{
-			//				scheduler: schedulerAdapter,
-			//				registry:  registryAdapter,
-			//			}
-			//
-			//			// Act.
-			//			go bridge.ProcessSchedulerEvents()
-			//			bridgeChannel <- &types.ServiceEvent{}
-			//
-			//			// Assert.
+			// Arrange.
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
+			schedulerAdapter.EXPECT().ListenForEvents(gomock.Any()).Do(func(channel types.EventsChannel) {
+				channel <- &types.ServiceEvent{
+					ServiceID: "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+					IP:        "10.10.10.10",
+					Action:    types.ServiceStarted,
+				}
+				close(channel)
+			}).Return(nil)
+			schedulerServices := []*types.ServiceGroup{}
+			schedulerAdapter.EXPECT().Services().Return(schedulerServices, nil).Times(1)
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
+
+			// Act.
+			err := bridge.ProcessSchedulerEvents()
+
+			// Assert.
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 })
