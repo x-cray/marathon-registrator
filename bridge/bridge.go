@@ -120,7 +120,11 @@ func (b *Bridge) ProcessSchedulerEvents() error {
 
 	log.WithField("prefix", "bridge").Info("Registered for scheduler event stream")
 	for {
-		event := <-schedulerEvents
+		event, more := <-schedulerEvents
+		if !more {
+			break
+		}
+
 		if event.Action != types.ServiceUnchanged {
 			log.WithFields(log.Fields{
 				"prefix":  "bridge",

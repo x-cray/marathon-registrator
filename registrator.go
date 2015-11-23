@@ -93,6 +93,7 @@ func main() {
 		}
 	}()
 
+	// Run the main event application loop.
 	for {
 		err = b.ProcessSchedulerEvents()
 		if err == nil {
@@ -102,8 +103,8 @@ func main() {
 		time.Sleep(reconnectInterval)
 	}
 
+	log.Warn("Scheduler event loop closed")
 	close(quit)
-	log.Fatal("Scheduler event loop closed")
 }
 
 func getConfig() (*types.Config, error) {
