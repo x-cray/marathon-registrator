@@ -8,12 +8,12 @@ Heavily inspired by [registrator](https://github.com/gliderlabs/registrator).
 
 # Features
 * Automatically registers/deregisters Marathon tasks as services in Consul.
-* Real-time updates of service registry.
+* Updates service registry in real-time.
 * Uses new Marathon [Event Stream](https://mesosphere.github.io/marathon/docs/rest-api.html#event-stream)
 (e.g. /v2/events) for getting service updates. No need to reconfigure Marathon to use webhooks.
-* Automatic cleanup of dangling services from service registry.
+* Automatically cleans up dangling services from service registry.
 * Designed with extensibility in mind: service scheduler and service registry are
-abstractions which may have different implementations. Currently, there is only Marathon
+abstractions which may have different implementations. Currently, there are only Marathon
 scheduler and Consul service registry implemented.
 
 # Installation
@@ -26,8 +26,9 @@ scheduler and Consul service registry implemented.
 | `consul`          | Address and port of Consul agent. Default: `http://127.0.0.1:8500`.
 | `marathon`        | URL of Marathon instance. Multiple instances may be specified in case of HA setup: http://addr1:8080,addr2:8080,addr3:8080. Default: `http://127.0.0.1:8080`.
 | `resync-interval` | Time interval to resync Marathon services to determine dangling instances. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h". Default: `5m`.
-| `dry-run`         | Do not perform actual service registeration/deregistration. Just log intents.
+| `dry-run`         | Do not perform actual service registration/deregistration. Just log intents.
 | `log-level`       | Set the logging level - valid values are "debug", "info", "warn", "error", and "fatal". Default: `info`.
+| `syslog`          | Send the log output to syslog.
 | `force-colors`    | Force colored log output.
 
 # Development
