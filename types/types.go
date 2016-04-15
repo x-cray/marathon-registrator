@@ -20,12 +20,22 @@ type RegistryAdapter interface {
 }
 
 type ServiceGroup struct {
-	ID       string
-	IP       string
-	Services []*Service
+	ID           string
+	IP           string
+	Services     []*Service
+	HealthChecks []*ServiceHealthCheck
 }
 
 type Service struct {
+	ID           string
+	Name         string
+	Tags         []string
+	Healthy      bool
+	OriginalPort int
+	ExposedPort  int
+}
+
+type ServiceHealthCheck struct {
 	ID           string
 	Name         string
 	Tags         []string

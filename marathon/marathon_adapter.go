@@ -66,6 +66,12 @@ func (m *marathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	return nil
 }
 
+func (m *marathonAdapter) toServiceHealthCheck(marathonHealthCheck *marathonClient.HealthCheck) (result *types.ServiceHealthCheck) {
+	result = &types.ServiceHealthCheck{}
+
+	return
+}
+
 func (m *marathonAdapter) toServiceEvent(marathonEvent *marathonClient.Event) (result *types.ServiceEvent) {
 	// Instantiate result object.
 	result = &types.ServiceEvent{
@@ -192,7 +198,7 @@ func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *maratho
 
 	idTokens := strings.Split(app.ID, "/")
 	defaultName := idTokens[len(idTokens)-1]
-	isgroup := len(task.Ports) > 1
+	isGroup := len(task.Ports) > 1
 	services := make([]*types.Service, len(task.Ports))
 	serviceGroup := &types.ServiceGroup{
 		ID:       task.ID,
@@ -203,7 +209,7 @@ func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *maratho
 	for i, exposedPort := range task.Ports {
 		originalPort := originalPorts[i]
 		name := defaultName
-		if isgroup {
+		if isGroup {
 			name += fmt.Sprintf("-%d", originalPort)
 		}
 		metadata := serviceMetadata(app, originalPort)
