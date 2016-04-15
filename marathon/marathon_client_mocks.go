@@ -9,52 +9,52 @@ import (
 	url "net/url"
 )
 
-// Mock of MarathonClient interface
-type MockMarathonClient struct {
+// Mock of Client interface
+type MockClient struct {
 	ctrl     *gomock.Controller
-	recorder *_MockMarathonClientRecorder
+	recorder *_MockClientRecorder
 }
 
-// Recorder for MockMarathonClient (not exported)
-type _MockMarathonClientRecorder struct {
-	mock *MockMarathonClient
+// Recorder for MockClient (not exported)
+type _MockClientRecorder struct {
+	mock *MockClient
 }
 
-func NewMockMarathonClient(ctrl *gomock.Controller) *MockMarathonClient {
-	mock := &MockMarathonClient{ctrl: ctrl}
-	mock.recorder = &_MockMarathonClientRecorder{mock}
+func NewMockClient(ctrl *gomock.Controller) *MockClient {
+	mock := &MockClient{ctrl: ctrl}
+	mock.recorder = &_MockClientRecorder{mock}
 	return mock
 }
 
-func (_m *MockMarathonClient) EXPECT() *_MockMarathonClientRecorder {
+func (_m *MockClient) EXPECT() *_MockClientRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMarathonClient) Applications(_param0 url.Values) (*go_marathon.Applications, error) {
+func (_m *MockClient) Applications(_param0 url.Values) (*go_marathon.Applications, error) {
 	ret := _m.ctrl.Call(_m, "Applications", _param0)
 	ret0, _ := ret[0].(*go_marathon.Applications)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMarathonClientRecorder) Applications(arg0 interface{}) *gomock.Call {
+func (_mr *_MockClientRecorder) Applications(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Applications", arg0)
 }
 
-func (_m *MockMarathonClient) AddEventsListener(channel go_marathon.EventsChannel, filter int) error {
+func (_m *MockClient) AddEventsListener(channel go_marathon.EventsChannel, filter int) error {
 	ret := _m.ctrl.Call(_m, "AddEventsListener", channel, filter)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMarathonClientRecorder) AddEventsListener(arg0, arg1 interface{}) *gomock.Call {
+func (_mr *_MockClientRecorder) AddEventsListener(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddEventsListener", arg0, arg1)
 }
 
-func (_m *MockMarathonClient) RemoveEventsListener(channel go_marathon.EventsChannel) {
+func (_m *MockClient) RemoveEventsListener(channel go_marathon.EventsChannel) {
 	_m.ctrl.Call(_m, "RemoveEventsListener", channel)
 }
 
-func (_mr *_MockMarathonClientRecorder) RemoveEventsListener(arg0 interface{}) *gomock.Call {
+func (_mr *_MockClientRecorder) RemoveEventsListener(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveEventsListener", arg0)
 }

@@ -22,7 +22,7 @@ func TestMarathonAdapter(t *testing.T) {
 var _ = Describe("MarathonAdapter", func() {
 	var (
 		mockCtrl *gomock.Controller
-		client   *MockMarathonClient
+		client   *MockClient
 		resolver *MockAddressResolver
 	)
 
@@ -218,7 +218,7 @@ var _ = Describe("MarathonAdapter", func() {
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		client = NewMockMarathonClient(mockCtrl)
+		client = NewMockClient(mockCtrl)
 		resolver = NewMockAddressResolver(mockCtrl)
 	})
 
@@ -230,7 +230,7 @@ var _ = Describe("MarathonAdapter", func() {
 		It("Should forward Marathon client errors", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(nil, errors.New("marathon-error"))
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			_, err := marathonAdapter.Services()
@@ -243,7 +243,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(singlePortApplications, nil)
 			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("", errors.New("resolve-error"))
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			_, err := marathonAdapter.Services()
@@ -256,7 +256,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(inconsistentPortsApplications, nil)
 			resolver.EXPECT().Resolve(gomock.Any()).Return("10.10.10.20", nil).AnyTimes()
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			_, err := marathonAdapter.Services()
@@ -269,7 +269,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(unhealthyApplications, nil)
 			resolver.EXPECT().Resolve(gomock.Any()).Return("10.10.10.20", nil).AnyTimes()
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			services, err := marathonAdapter.Services()
@@ -293,7 +293,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(singlePortApplications, nil)
 			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			services, err := marathonAdapter.Services()
@@ -321,7 +321,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(singlePortApplicationsWithLabels, nil)
 			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			services, err := marathonAdapter.Services()
@@ -349,7 +349,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(multiPortSimpleApplications, nil)
 			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			services, err := marathonAdapter.Services()
@@ -386,7 +386,7 @@ var _ = Describe("MarathonAdapter", func() {
 			// Arrange.
 			client.EXPECT().Applications(gomock.Any()).Return(multiPortComplexDockerApplications, nil)
 			resolver.EXPECT().Resolve("web.eu-west-1.internal").Return("10.10.10.20", nil).AnyTimes()
-			marathonAdapter := &marathonAdapter{client: client, resolver: resolver}
+			marathonAdapter := &Adapter{client: client, resolver: resolver}
 
 			// Act.
 			services, err := marathonAdapter.Services()

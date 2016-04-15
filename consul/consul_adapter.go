@@ -11,12 +11,12 @@ import (
 	consulAPI "github.com/hashicorp/consul/api"
 )
 
-type consulAdapter struct {
+type Adapter struct {
 	client *consulAPI.Client
 	dryRun bool
 }
 
-func New(uri *url.URL, dryRun bool) (*consulAdapter, error) {
+func New(uri *url.URL, dryRun bool) (*Adapter, error) {
 	config := consulAPI.DefaultConfig()
 	config.Address = uri.Host
 	config.Scheme = uri.Scheme
@@ -27,14 +27,14 @@ func New(uri *url.URL, dryRun bool) (*consulAdapter, error) {
 		return nil, err
 	}
 
-	return &consulAdapter{
+	return &Adapter{
 		client: client,
 		dryRun: dryRun,
 	}, nil
 }
 
 // Ping will try to connect to consul by attempting to retrieve the current leader.
-func (r *consulAdapter) Ping() error {
+func (r *Adapter) Ping() error {
 	status := r.client.Status()
 	leader, err := status.Leader()
 	if err != nil {
@@ -45,7 +45,7 @@ func (r *consulAdapter) Ping() error {
 	return nil
 }
 
-func (r *consulAdapter) Register(group *types.ServiceGroup) error {
+func (r *Adapter) Register(group *types.ServiceGroup) error {
 	for _, service := range group.Services {
 		if r.dryRun {
 			log.WithFields(log.Fields{
@@ -82,7 +82,7 @@ func (r *consulAdapter) Register(group *types.ServiceGroup) error {
 	return nil
 }
 
-func (r *consulAdapter) Deregister(group *types.ServiceGroup) error {
+func (r *Adapter) Deregister(group *types.ServiceGroup) error {
 	for _, service := range group.Services {
 		if r.dryRun {
 			log.WithFields(log.Fields{
@@ -112,7 +112,7 @@ func (r *consulAdapter) Deregister(group *types.ServiceGroup) error {
 	return nil
 }
 
-func (r *consulAdapter) AdvertiseAddr() (string, error) {
+func (r *Adapter) AdvertiseAddr() (string, error) {
 	info, err := r.client.Agent().Self()
 	if err != nil {
 		return "", err
@@ -138,7 +138,7 @@ func groupID(serviceID string) string {
 	return serviceID
 }
 
-func (r *consulAdapter) Services() ([]*types.ServiceGroup, error) {
+func (r *Adapter) Services() ([]*types.ServiceGroup, error) {
 	services, err := r.client.Agent().Services()
 	if err != nil {
 		return nil, err

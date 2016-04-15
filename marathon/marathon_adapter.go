@@ -1,6 +1,7 @@
 package marathon
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/x-cray/marathon-registrator/types"
 
-	"errors"
 	log "github.com/Sirupsen/logrus"
 	marathonClient "github.com/gambol99/go-marathon"
 )
@@ -26,12 +26,14 @@ var (
 	}
 )
 
-type marathonAdapter struct {
-	client   MarathonClient
+// Adapter is the implementation of RegistryAdapter for Marathon.
+type Adapter struct {
+	client   Client
 	resolver AddressResolver
 }
 
-func New(marathonURL string) (*marathonAdapter, error) {
+// New creates a new Adapter.
+func New(marathonURL string) (*Adapter, error) {
 	config := marathonClient.NewDefaultConfig()
 	config.URL = marathonURL
 	config.RequestTimeout = 60 // 60 seconds
@@ -43,15 +45,17 @@ func New(marathonURL string) (*marathonAdapter, error) {
 		return nil, err
 	}
 
-	return &marathonAdapter{
+	return &Adapter{
 		client:   client,
 		resolver: &defaultAddressResolver{},
 	}, nil
 }
 
-func (m *marathonAdapter) ListenForEvents(channel types.EventsChannel) error {
+// ListenForEvents subscribes to Marathon events and publishes them to channel.
+func (m *Adapter) ListenForEvents(channel types.EventsChannel) error {
 	update := make(marathonClient.EventsChannel, 5)
-	if err := m.client.AddEventsListener(update, marathonClient.EVENTS_APPLICATIONS|marathonClient.EVENT_FRAMEWORK_MESSAGE); err != nil {
+	eventTypes := marathonClient.EVENTS_APPLICATIONS | marathonClient.EVENT_FRAMEWORK_MESSAGE
+	if err := m.client.AddEventsListener(update, eventTypes); err != nil {
 		return err
 	}
 
@@ -66,13 +70,13 @@ func (m *marathonAdapter) ListenForEvents(channel types.EventsChannel) error {
 	return nil
 }
 
-func (m *marathonAdapter) toServiceHealthCheck(marathonHealthCheck *marathonClient.HealthCheck) (result *types.ServiceHealthCheck) {
+func (m *Adapter) toServiceHealthCheck(marathonHealthCheck *marathonClient.HealthCheck) (result *types.ServiceHealthCheck) {
 	result = &types.ServiceHealthCheck{}
 
 	return
 }
 
-func (m *marathonAdapter) toServiceEvent(marathonEvent *marathonClient.Event) (result *types.ServiceEvent) {
+func (m *Adapter) toServiceEvent(marathonEvent *marathonClient.Event) (result *types.ServiceEvent) {
 	// Instantiate result object.
 	result = &types.ServiceEvent{
 		OriginalEvent: marathonEvent.Event,
@@ -185,7 +189,7 @@ func isHealthy(task *marathonClient.Task, app *marathonClient.Application) bool 
 	return true
 }
 
-func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *marathonClient.Application) (*types.ServiceGroup, error) {
+func (m *Adapter) toServiceGroup(task *marathonClient.Task, app *marathonClient.Application) (*types.ServiceGroup, error) {
 	taskIP, err := m.resolver.Resolve(task.Host)
 	if err != nil {
 		return nil, err
@@ -227,7 +231,8 @@ func (m *marathonAdapter) toServiceGroup(task *marathonClient.Task, app *maratho
 	return serviceGroup, nil
 }
 
-func (m *marathonAdapter) Services() ([]*types.ServiceGroup, error) {
+// Services returns the list of registered services.
+func (m *Adapter) Services() ([]*types.ServiceGroup, error) {
 	params := make(url.Values)
 	params.Add("embed", "apps.tasks")
 	applications, err := m.client.Applications(params)

@@ -6,6 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+// AddressResolver is the interface for address resolver implementations.
 type AddressResolver interface {
 	Resolve(hostname string) (string, error)
 }
