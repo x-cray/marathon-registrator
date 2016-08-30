@@ -106,11 +106,11 @@ var _ = Describe("Bridge", func() {
 		It("Should do nothing if service sets in scheduler and registry match", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:         "db-server",
 							Healthy:      true,
@@ -119,11 +119,11 @@ var _ = Describe("Bridge", func() {
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:         "app-server",
 							Healthy:      true,
@@ -134,22 +134,22 @@ var _ = Describe("Bridge", func() {
 				},
 			}
 			registryServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:        "db-server",
 							ExposedPort: 31045,
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:        "app-server",
 							ExposedPort: 31046,
@@ -177,11 +177,11 @@ var _ = Describe("Bridge", func() {
 		It("Should register 1 service absent from registry but present in scheduler", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:         "db-server",
 							Healthy:      true,
@@ -190,11 +190,11 @@ var _ = Describe("Bridge", func() {
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:         "app-server",
 							Healthy:      true,
@@ -205,11 +205,11 @@ var _ = Describe("Bridge", func() {
 				},
 			}
 			registryServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:        "app-server",
 							ExposedPort: 31046,
@@ -243,11 +243,11 @@ var _ = Describe("Bridge", func() {
 		It("Should deregister 1 service absent from scheduler but present in registry", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:         "app-server",
 							Healthy:      true,
@@ -258,22 +258,22 @@ var _ = Describe("Bridge", func() {
 				},
 			}
 			registryServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:        "db-server",
 							ExposedPort: 31045,
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:        "app-server",
 							ExposedPort: 31046,
@@ -307,11 +307,11 @@ var _ = Describe("Bridge", func() {
 		It("Should deregister 1 service (with colliding exposed port number) absent from scheduler but present in registry", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:         "app-server",
 							Healthy:      true,
@@ -322,22 +322,22 @@ var _ = Describe("Bridge", func() {
 				},
 			}
 			registryServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:        "db-server",
 							ExposedPort: 31046,
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:        "app-server",
 							ExposedPort: 31046,
@@ -371,11 +371,11 @@ var _ = Describe("Bridge", func() {
 		It("Should register 2 services absent from registry but present in scheduler", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:         "db-server",
 							Healthy:      true,
@@ -384,11 +384,11 @@ var _ = Describe("Bridge", func() {
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:         "app-server",
 							Healthy:      true,
@@ -429,11 +429,11 @@ var _ = Describe("Bridge", func() {
 		It("Should not try to register services from address different than registry advertized one", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:         "db-server",
 							Healthy:      true,
@@ -442,11 +442,11 @@ var _ = Describe("Bridge", func() {
 						},
 					},
 				},
-				&types.ServiceGroup{
+				{
 					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
 					IP: "10.10.10.20",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
 							Name:         "app-server",
 							Healthy:      true,
@@ -483,11 +483,11 @@ var _ = Describe("Bridge", func() {
 		It("Should not try to register unhealthy services", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{
-				&types.ServiceGroup{
+				{
 					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
 					IP: "10.10.10.10",
 					Services: []*types.Service{
-						&types.Service{
+						{
 							ID:           "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
 							Name:         "db-server",
 							Healthy:      false,

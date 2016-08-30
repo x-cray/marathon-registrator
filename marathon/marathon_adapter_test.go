@@ -28,10 +28,10 @@ var _ = Describe("MarathonAdapter", func() {
 
 	inconsistentPortsApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
-			marathonClient.Application{
+			{
 				Ports: []int{80, 8080},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						Ports: []int{},
 					},
 				},
@@ -42,25 +42,25 @@ var _ = Describe("MarathonAdapter", func() {
 	unhealthyApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
 			// Healthy 1. No healthchecks.
-			marathonClient.Application{
+			{
 				Ports: []int{3000},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						Ports: []int{3000},
 					},
 				},
 			},
 			// Healthy 2. Healthchecks are passing.
-			marathonClient.Application{
+			{
 				Ports: []int{3000},
 				HealthChecks: []*marathonClient.HealthCheck{
-					&marathonClient.HealthCheck{},
+					{},
 				},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						Ports: []int{3000},
 						HealthCheckResult: []*marathonClient.HealthCheckResult{
-							&marathonClient.HealthCheckResult{
+							{
 								Alive: true,
 							},
 						},
@@ -68,16 +68,16 @@ var _ = Describe("MarathonAdapter", func() {
 				},
 			},
 			// Unhealthy 1. Healthchecks are not passing.
-			marathonClient.Application{
+			{
 				Ports: []int{3000},
 				HealthChecks: []*marathonClient.HealthCheck{
-					&marathonClient.HealthCheck{},
+					{},
 				},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						Ports: []int{3000},
 						HealthCheckResult: []*marathonClient.HealthCheckResult{
-							&marathonClient.HealthCheckResult{
+							{
 								Alive: false,
 							},
 						},
@@ -85,21 +85,21 @@ var _ = Describe("MarathonAdapter", func() {
 				},
 			},
 			// Unhealthy 2. Healthchecks are either not passing or missing healthcheck results.
-			marathonClient.Application{
+			{
 				Ports: []int{3000},
 				HealthChecks: []*marathonClient.HealthCheck{
-					&marathonClient.HealthCheck{},
+					{},
 				},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						Ports: []int{3000},
 						HealthCheckResult: []*marathonClient.HealthCheckResult{
-							&marathonClient.HealthCheckResult{
+							{
 								Alive: false,
 							},
 						},
 					},
-					&marathonClient.Task{
+					{
 						Ports: []int{3000},
 					},
 				},
@@ -109,7 +109,7 @@ var _ = Describe("MarathonAdapter", func() {
 
 	singlePortApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
-			marathonClient.Application{
+			{
 				ID: "/app/staging/web-app",
 				Env: map[string]string{
 					"NODE_ENV":     "production",
@@ -118,7 +118,7 @@ var _ = Describe("MarathonAdapter", func() {
 				},
 				Ports: []int{80},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
 						AppID: "/app/staging/web-app",
 						Host:  "web.eu-west-1.internal",
@@ -131,7 +131,7 @@ var _ = Describe("MarathonAdapter", func() {
 
 	singlePortApplicationsWithLabels := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
-			marathonClient.Application{
+			{
 				ID: "/app/staging/web-app",
 				Env: map[string]string{
 					"SERVICE_TAGS": "production",
@@ -143,7 +143,7 @@ var _ = Describe("MarathonAdapter", func() {
 				},
 				Ports: []int{80},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
 						AppID: "/app/staging/web-app",
 						Host:  "web.eu-west-1.internal",
@@ -156,7 +156,7 @@ var _ = Describe("MarathonAdapter", func() {
 
 	multiPortSimpleApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
-			marathonClient.Application{
+			{
 				ID: "/app/staging/web-app",
 				Env: map[string]string{
 					"SERVICE_TAGS": "staging",
@@ -166,7 +166,7 @@ var _ = Describe("MarathonAdapter", func() {
 					8080,
 				},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
 						AppID: "/app/staging/web-app",
 						Host:  "web.eu-west-1.internal",
@@ -182,7 +182,7 @@ var _ = Describe("MarathonAdapter", func() {
 
 	multiPortComplexDockerApplications := &marathonClient.Applications{
 		Apps: []marathonClient.Application{
-			marathonClient.Application{
+			{
 				ID: "/app/staging/web-app",
 				Env: map[string]string{
 					"SERVICE_TAGS":      "production",
@@ -192,17 +192,17 @@ var _ = Describe("MarathonAdapter", func() {
 				Container: &marathonClient.Container{
 					Docker: &marathonClient.Docker{
 						PortMappings: []*marathonClient.PortMapping{
-							&marathonClient.PortMapping{
+							{
 								ContainerPort: 80,
 							},
-							&marathonClient.PortMapping{
+							{
 								ContainerPort: 8080,
 							},
 						},
 					},
 				},
 				Tasks: []*marathonClient.Task{
-					&marathonClient.Task{
+					{
 						ID:    "web_app_2c033893-7993-11e5-8878-56847afe9799",
 						AppID: "/app/staging/web-app",
 						Host:  "web.eu-west-1.internal",
@@ -305,7 +305,7 @@ var _ = Describe("MarathonAdapter", func() {
 				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
 				IP: "10.10.10.20",
 				Services: []*types.Service{
-					&types.Service{
+					{
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app",
 						Tags:         []string{"production"},
@@ -333,7 +333,7 @@ var _ = Describe("MarathonAdapter", func() {
 				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
 				IP: "10.10.10.20",
 				Services: []*types.Service{
-					&types.Service{
+					{
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app-labelled",
 						Tags:         []string{"production-labelled"},
@@ -362,7 +362,7 @@ var _ = Describe("MarathonAdapter", func() {
 				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
 				IP: "10.10.10.20",
 				Services: []*types.Service{
-					&types.Service{
+					{
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app-80",
 						Tags:         []string{"staging"},
@@ -370,7 +370,7 @@ var _ = Describe("MarathonAdapter", func() {
 						OriginalPort: 80,
 						ExposedPort:  31045,
 					},
-					&types.Service{
+					{
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:8080",
 						Name:         "web-app-8080",
 						Tags:         []string{"staging"},
@@ -399,7 +399,7 @@ var _ = Describe("MarathonAdapter", func() {
 				ID: "web_app_2c033893-7993-11e5-8878-56847afe9799",
 				IP: "10.10.10.20",
 				Services: []*types.Service{
-					&types.Service{
+					{
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:80",
 						Name:         "web-app-1",
 						Tags:         []string{"production"},
@@ -407,7 +407,7 @@ var _ = Describe("MarathonAdapter", func() {
 						OriginalPort: 80,
 						ExposedPort:  31045,
 					},
-					&types.Service{
+					{
 						ID:           "web_app_2c033893-7993-11e5-8878-56847afe9799:8080",
 						Name:         "web-app-2",
 						Tags:         []string{"production"},
