@@ -304,6 +304,70 @@ var _ = Describe("Bridge", func() {
 			bridge.Sync()
 		})
 
+		It("Should deregister 1 service (with colliding exposed port number) absent from scheduler but present in registry", func() {
+			// Arrange.
+			schedulerServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:           "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:         "app-server",
+							Healthy:      true,
+							OriginalPort: 3000,
+							ExposedPort:  31046,
+						},
+					},
+				},
+			}
+			registryServices := []*types.ServiceGroup{
+				&types.ServiceGroup{
+					ID: "db_server_2c033893-7993-11e5-8878-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:          "db_server_2c033893-7993-11e5-8878-56847afe9799:27017",
+							Name:        "db-server",
+							ExposedPort: 31046,
+						},
+					},
+				},
+				&types.ServiceGroup{
+					ID: "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799",
+					IP: "10.10.10.10",
+					Services: []*types.Service{
+						&types.Service{
+							ID:          "app_server_5877d4d2-7b4b-11e5-b945-56847afe9799:3000",
+							Name:        "app-server",
+							ExposedPort: 31046,
+						},
+					},
+				},
+			}
+			schedulerAdapter.EXPECT().Services().Return(schedulerServices, nil)
+			registryAdapter.EXPECT().Services().Return(registryServices, nil)
+			registryAdapter.EXPECT().AdvertiseAddr().Return("10.10.10.10", nil)
+			registryAdapter.EXPECT().Deregister(gomock.Any()).Do(func(group *types.ServiceGroup) {
+				Ω(group.IP).Should(Equal("10.10.10.10"))
+				Ω(group.Services).Should(HaveLen(1))
+				service := group.Services[0]
+
+				Ω(service.ID).Should(Equal("db_server_2c033893-7993-11e5-8878-56847afe9799:27017"))
+				Ω(service.Name).Should(Equal("db-server"))
+				Ω(service.ExposedPort).Should(Equal(31046))
+			}).Return(nil).Times(1)
+			registryAdapter.EXPECT().Register(gomock.Any()).Times(0)
+
+			bridge := &Bridge{
+				scheduler: schedulerAdapter,
+				registry:  registryAdapter,
+			}
+
+			// Act.
+			bridge.Sync()
+		})
+
 		It("Should register 2 services absent from registry but present in scheduler", func() {
 			// Arrange.
 			schedulerServices := []*types.ServiceGroup{

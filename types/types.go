@@ -19,6 +19,9 @@ type RegistryAdapter interface {
 	AdvertiseAddr() (string, error)
 }
 
+// ServiceGroup represents the collection of services which expose multiple ports.
+// Most of the time it will hold the single Service instance, but if the service exposes multiple ports, it will contain
+// multiple services named by appending exposed port number to them, i.e. foo-service-3000, foo-service-4001, etc.
 type ServiceGroup struct {
 	ID           string
 	IP           string
@@ -26,6 +29,7 @@ type ServiceGroup struct {
 	HealthChecks []*ServiceHealthCheck
 }
 
+// Service represents a single entry in the service registry.
 type Service struct {
 	ID           string
 	Name         string
@@ -35,6 +39,7 @@ type Service struct {
 	ExposedPort  int
 }
 
+// ServiceHealthCheck represents health check definition.
 type ServiceHealthCheck struct {
 	ID           string
 	Name         string
@@ -45,7 +50,7 @@ type ServiceHealthCheck struct {
 }
 
 func (group *ServiceGroup) ServiceKey(service *Service) string {
-	return fmt.Sprintf("%s:%d", group.IP, service.ExposedPort)
+	return fmt.Sprintf("%s:%s:%d", service.Name, group.IP, service.ExposedPort)
 }
 
 type ServiceAction int
