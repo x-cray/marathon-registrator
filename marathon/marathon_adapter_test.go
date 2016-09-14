@@ -53,13 +53,13 @@ var _ = Describe("MarathonAdapter", func() {
 			// Healthy 2. Healthchecks are passing.
 			{
 				Ports: []int{3000},
-				HealthChecks: []*marathonClient.HealthCheck{
+				HealthChecks: &[]marathonClient.HealthCheck{
 					{},
 				},
 				Tasks: []*marathonClient.Task{
 					{
 						Ports: []int{3000},
-						HealthCheckResult: []*marathonClient.HealthCheckResult{
+						HealthCheckResults: []*marathonClient.HealthCheckResult{
 							{
 								Alive: true,
 							},
@@ -70,13 +70,13 @@ var _ = Describe("MarathonAdapter", func() {
 			// Unhealthy 1. Healthchecks are not passing.
 			{
 				Ports: []int{3000},
-				HealthChecks: []*marathonClient.HealthCheck{
+				HealthChecks: &[]marathonClient.HealthCheck{
 					{},
 				},
 				Tasks: []*marathonClient.Task{
 					{
 						Ports: []int{3000},
-						HealthCheckResult: []*marathonClient.HealthCheckResult{
+						HealthCheckResults: []*marathonClient.HealthCheckResult{
 							{
 								Alive: false,
 							},
@@ -87,13 +87,13 @@ var _ = Describe("MarathonAdapter", func() {
 			// Unhealthy 2. Healthchecks are either not passing or missing healthcheck results.
 			{
 				Ports: []int{3000},
-				HealthChecks: []*marathonClient.HealthCheck{
+				HealthChecks: &[]marathonClient.HealthCheck{
 					{},
 				},
 				Tasks: []*marathonClient.Task{
 					{
 						Ports: []int{3000},
-						HealthCheckResult: []*marathonClient.HealthCheckResult{
+						HealthCheckResults: []*marathonClient.HealthCheckResult{
 							{
 								Alive: false,
 							},
@@ -111,7 +111,7 @@ var _ = Describe("MarathonAdapter", func() {
 		Apps: []marathonClient.Application{
 			{
 				ID: "/app/staging/web-app",
-				Env: map[string]string{
+				Env: &map[string]string{
 					"NODE_ENV":     "production",
 					"SERVICE_TAGS": "production",
 					"SERVICE_NAME": "web-app",
@@ -133,11 +133,11 @@ var _ = Describe("MarathonAdapter", func() {
 		Apps: []marathonClient.Application{
 			{
 				ID: "/app/staging/web-app",
-				Env: map[string]string{
+				Env: &map[string]string{
 					"SERVICE_TAGS": "production",
 					"SERVICE_NAME": "web-app",
 				},
-				Labels: map[string]string{
+				Labels: &map[string]string{
 					"SERVICE_TAGS": "production-labelled",
 					"SERVICE_NAME": "web-app-labelled",
 				},
@@ -158,7 +158,7 @@ var _ = Describe("MarathonAdapter", func() {
 		Apps: []marathonClient.Application{
 			{
 				ID: "/app/staging/web-app",
-				Env: map[string]string{
+				Env: &map[string]string{
 					"SERVICE_TAGS": "staging",
 				},
 				Ports: []int{
@@ -184,14 +184,14 @@ var _ = Describe("MarathonAdapter", func() {
 		Apps: []marathonClient.Application{
 			{
 				ID: "/app/staging/web-app",
-				Env: map[string]string{
+				Env: &map[string]string{
 					"SERVICE_TAGS":      "production",
 					"SERVICE_80_NAME":   "web-app-1",
 					"SERVICE_8080_NAME": "web-app-2",
 				},
 				Container: &marathonClient.Container{
 					Docker: &marathonClient.Docker{
-						PortMappings: []*marathonClient.PortMapping{
+						PortMappings: &[]marathonClient.PortMapping{
 							{
 								ContainerPort: 80,
 							},

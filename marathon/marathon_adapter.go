@@ -147,8 +147,12 @@ func extractServiceMetadata(source, destination map[string]string, port string) 
 func serviceMetadata(application *marathonClient.Application, port int) map[string]string {
 	result := make(map[string]string)
 	stringPort := strconv.Itoa(port)
-	extractServiceMetadata(*application.Env, result, stringPort)
-	extractServiceMetadata(*application.Labels, result, stringPort)
+	if application.Env != nil {
+		extractServiceMetadata(*application.Env, result, stringPort)
+	}
+	if application.Labels != nil {
+		extractServiceMetadata(*application.Labels, result, stringPort)
+	}
 	return result
 }
 
@@ -173,6 +177,11 @@ func originalPorts(app *marathonClient.Application) []int {
 }
 
 func isHealthy(task *marathonClient.Task, app *marathonClient.Application) bool {
+	// Task has no healthchecks. Assume healthy.
+	if (app.HealthChecks == nil) || (len(*app.HealthChecks) == 0) {
+		return true;
+	}
+
 	// Tasks' health has not yet been checked.
 	if len(*app.HealthChecks) != len(task.HealthCheckResults) {
 		return false
