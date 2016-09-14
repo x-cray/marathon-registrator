@@ -36,7 +36,6 @@ type Adapter struct {
 func New(marathonURL string) (*Adapter, error) {
 	config := marathonClient.NewDefaultConfig()
 	config.URL = marathonURL
-	config.RequestTimeout = 60 // 60 seconds
 	config.EventsTransport = marathonClient.EventsTransportSSE
 
 	log.WithField("prefix", "marathon").Infof("Connecting to Marathon at %v", marathonURL)
@@ -54,7 +53,7 @@ func New(marathonURL string) (*Adapter, error) {
 // ListenForEvents subscribes to Marathon events and publishes them to channel.
 func (m *Adapter) ListenForEvents(channel types.EventsChannel) error {
 	update := make(marathonClient.EventsChannel, 5)
-	eventTypes := marathonClient.EVENTS_APPLICATIONS | marathonClient.EVENT_FRAMEWORK_MESSAGE
+	eventTypes := marathonClient.EventIDApplications | marathonClient.EventIDFrameworkMessage
 	if err := m.client.AddEventsListener(update, eventTypes); err != nil {
 		return err
 	}
@@ -148,8 +147,8 @@ func extractServiceMetadata(source, destination map[string]string, port string) 
 func serviceMetadata(application *marathonClient.Application, port int) map[string]string {
 	result := make(map[string]string)
 	stringPort := strconv.Itoa(port)
-	extractServiceMetadata(application.Env, result, stringPort)
-	extractServiceMetadata(application.Labels, result, stringPort)
+	extractServiceMetadata(*application.Env, result, stringPort)
+	extractServiceMetadata(*application.Labels, result, stringPort)
 	return result
 }
 
@@ -164,7 +163,7 @@ func parseTags(tagString string) []string {
 func originalPorts(app *marathonClient.Application) []int {
 	if app.Container != nil && app.Container.Docker != nil {
 		var res []int
-		for _, portMapping := range app.Container.Docker.PortMappings {
+		for _, portMapping := range *app.Container.Docker.PortMappings {
 			res = append(res, portMapping.ContainerPort)
 		}
 		return res
@@ -175,12 +174,12 @@ func originalPorts(app *marathonClient.Application) []int {
 
 func isHealthy(task *marathonClient.Task, app *marathonClient.Application) bool {
 	// Tasks' health has not yet been checked.
-	if len(app.HealthChecks) != len(task.HealthCheckResult) {
+	if len(*app.HealthChecks) != len(task.HealthCheckResults) {
 		return false
 	}
 
 	// Tasks' health is not ok.
-	for _, checkResult := range task.HealthCheckResult {
+	for _, checkResult := range task.HealthCheckResults {
 		if !checkResult.Alive {
 			return false
 		}
