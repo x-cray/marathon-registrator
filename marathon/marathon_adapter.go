@@ -177,7 +177,7 @@ func originalPorts(app *marathonClient.Application) []int {
 }
 
 func isHealthy(task *marathonClient.Task, app *marathonClient.Application) bool {
-	// Task has no healthchecks. Assume healthy.
+	// App has no healthchecks. Assume healthy.
 	if (app.HealthChecks == nil) || (len(*app.HealthChecks) == 0) {
 		return true;
 	}
